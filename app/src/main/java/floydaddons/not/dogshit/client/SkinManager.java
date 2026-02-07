@@ -2,22 +2,28 @@ package floydaddons.not.dogshit.client;
 
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.texture.NativeImage;
 import net.minecraft.client.texture.NativeImageBackedTexture;
 import net.minecraft.client.texture.TextureManager;
 import net.minecraft.util.Identifier;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Stream;
 
 public final class SkinManager {
     private static final Identifier BUILTIN_SKIN = Identifier.of(FloydAddonsClient.MOD_ID, "textures/skin/custom.png");
-    private static final Path EXTERNAL_SKIN_PATH = FabricLoader.getInstance()
-            .getConfigDir().resolve("floydaddons").resolve("custom-skin.png");
+    private static final String DEFAULT_SKIN_NAME = "george-floyd.png";
+    private static final Path SKIN_DIR = FabricLoader.getInstance()
+            .getConfigDir().resolve("floydaddons");
     private static Identifier cachedTexture = null;
     private static long lastLoad = 0;
     private static final long RELOAD_MS = 5_000;
+    private static boolean defaultExtracted = false;
 
     private SkinManager() {}
 
@@ -31,16 +37,28 @@ public final class SkinManager {
         return cachedTexture;
     }
 
-    /** Location users can drop a PNG to override the built-in skin. */
-    public static Path getExternalSkinPath() {
-        return EXTERNAL_SKIN_PATH;
+    /** Returns the skin folder directory. */
+    public static Path getSkinDir() {
+        return SKIN_DIR;
     }
 
-    /** Ensures the external folder exists; returns its directory. */
+    /** Ensures the skin folder exists; returns its directory. */
     public static Path ensureExternalDir() {
-        Path dir = EXTERNAL_SKIN_PATH.getParent();
-        try { Files.createDirectories(dir); } catch (IOException ignored) {}
-        return dir;
+        try { Files.createDirectories(SKIN_DIR); } catch (IOException ignored) {}
+        return SKIN_DIR;
+    }
+
+    /** Lists all .png files in the skin folder, sorted alphabetically. */
+    public static List<String> listAvailableSkins() {
+        ensureExternalDir();
+        List<String> skins = new ArrayList<>();
+        try (Stream<Path> files = Files.list(SKIN_DIR)) {
+            files.filter(p -> Files.isRegularFile(p) && p.getFileName().toString().toLowerCase().endsWith(".png"))
+                 .map(p -> p.getFileName().toString())
+                 .sorted(String.CASE_INSENSITIVE_ORDER)
+                 .forEach(skins::add);
+        } catch (IOException ignored) {}
+        return skins;
     }
 
     public static void clearCache() {
@@ -48,16 +66,53 @@ public final class SkinManager {
         lastLoad = 0;
     }
 
+    /**
+     * On first load, extracts the bundled skin to the config folder as george-floyd.png
+     * so end users get a default skin without manual setup.
+     */
+    private static void extractDefaultSkin(MinecraftClient mc) {
+        if (defaultExtracted) return;
+        defaultExtracted = true;
+        ensureExternalDir();
+        Path target = SKIN_DIR.resolve(DEFAULT_SKIN_NAME);
+        if (Files.exists(target)) return;
+        try {
+            var resource = mc.getResourceManager().getResource(BUILTIN_SKIN);
+            if (resource.isPresent()) {
+                try (InputStream in = resource.get().getInputStream()) {
+                    Files.copy(in, target);
+                }
+            }
+        } catch (Exception ignored) {}
+    }
+
     private static void loadTexture(MinecraftClient mc) {
         try {
+            extractDefaultSkin(mc);
             NativeImage image = null;
 
-            // First: user-provided override.
-            if (Files.isRegularFile(EXTERNAL_SKIN_PATH)) {
-                image = NativeImage.read(Files.newInputStream(EXTERNAL_SKIN_PATH));
+            // Load the selected skin from config
+            String selected = SkinConfig.getSelectedSkin();
+            if (selected != null && !selected.isEmpty()) {
+                Path skinFile = SKIN_DIR.resolve(selected);
+                if (Files.isRegularFile(skinFile)) {
+                    image = NativeImage.read(Files.newInputStream(skinFile));
+                }
             }
 
-            // Second: bundled resource.
+            // Fallback: try any .png in the folder
+            if (image == null) {
+                List<String> available = listAvailableSkins();
+                if (!available.isEmpty()) {
+                    String first = available.get(0);
+                    Path skinFile = SKIN_DIR.resolve(first);
+                    image = NativeImage.read(Files.newInputStream(skinFile));
+                    // Auto-select it for next time
+                    SkinConfig.setSelectedSkin(first);
+                }
+            }
+
+            // Bundled resource fallback
             if (image == null) {
                 var resource = mc.getResourceManager().getResource(BUILTIN_SKIN);
                 if (resource.isPresent()) {
@@ -65,7 +120,7 @@ public final class SkinManager {
                 }
             }
 
-            // Fallback generator.
+            // Generator fallback
             if (image == null) {
                 image = generateFallbackSkin();
             }
@@ -79,7 +134,6 @@ public final class SkinManager {
         }
     }
 
-    // Simple generated fallback skin so toggles visibly change something even if resource missing.
     private static NativeImage generateFallbackSkin() {
         NativeImage img = new NativeImage(64, 64, false);
         int dark = 0xFF1A1612;
@@ -87,13 +141,9 @@ public final class SkinManager {
         int stripe1 = 0xFF4A4948;
         int stripe2 = 0xFF646464;
         int blue = 0xFF1E223C;
-        // base dark
         for (int y = 0; y < 64; y++) for (int x = 0; x < 64; x++) img.setColor(x, y, dark);
-        // head front
         for (int y = 8; y < 16; y++) for (int x = 20; x < 36; x++) img.setColor(x, y, skin);
-        // torso stripes
         for (int y = 20; y < 32; y++) for (int x = 8; x < 56; x++) img.setColor(x, y, (y % 4 < 2) ? stripe2 : stripe1);
-        // legs blue
         for (int y = 32; y < 64; y++) for (int x = 12; x < 52; x++) img.setColor(x, y, blue);
         return img;
     }

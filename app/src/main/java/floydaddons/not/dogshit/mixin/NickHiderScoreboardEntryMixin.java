@@ -3,6 +3,7 @@ package floydaddons.not.dogshit.mixin;
 import floydaddons.not.dogshit.client.NickHiderConfig;
 import floydaddons.not.dogshit.client.NickTextUtil;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.network.PlayerListEntry;
 import net.minecraft.scoreboard.ScoreboardEntry;
 import net.minecraft.text.Text;
 import org.spongepowered.asm.mixin.Mixin;
@@ -18,11 +19,25 @@ public class NickHiderScoreboardEntryMixin {
         if (!NickHiderConfig.isEnabled()) return;
         MinecraftClient client = MinecraftClient.getInstance();
         if (client == null || client.getSession() == null) return;
-        String username = client.getSession().getUsername();
-        String nick = NickHiderConfig.getNickname();
         Text original = cir.getReturnValue();
         if (original == null) return;
+
+        String username = client.getSession().getUsername();
+        String nick = NickHiderConfig.getNickname();
         Text replaced = NickTextUtil.replaceLiteralTextIgnoreCase(original, username, nick);
+
+        if (NickHiderConfig.isHideOthers() && client.getNetworkHandler() != null) {
+            String othersNick = NickHiderConfig.getOthersNickname();
+            for (PlayerListEntry entry : client.getNetworkHandler().getPlayerList()) {
+                if (entry.getProfile() == null) continue;
+                if (entry.getProfile().id().equals(client.getSession().getUuidOrNull())) continue;
+                String name = entry.getProfile().name();
+                if (name != null && !name.isEmpty()) {
+                    replaced = NickTextUtil.replaceLiteralTextIgnoreCase(replaced, name, othersNick);
+                }
+            }
+        }
+
         cir.setReturnValue(replaced);
     }
 }

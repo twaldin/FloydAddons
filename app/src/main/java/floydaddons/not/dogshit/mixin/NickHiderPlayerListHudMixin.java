@@ -19,13 +19,20 @@ public class NickHiderPlayerListHudMixin {
         if (!NickHiderConfig.isEnabled()) return;
         MinecraftClient client = MinecraftClient.getInstance();
         if (client == null || client.getSession() == null || entry == null || entry.getProfile() == null) return;
-        if (!entry.getProfile().id().equals(client.getSession().getUuidOrNull())) return;
 
         Text original = cir.getReturnValue();
         if (original == null) return;
-        String username = client.getSession().getUsername();
-        String nick = NickHiderConfig.getNickname();
-        Text replaced = NickTextUtil.replaceLiteralTextIgnoreCase(original, username, nick);
-        cir.setReturnValue(replaced);
+
+        boolean isSelf = entry.getProfile().id().equals(client.getSession().getUuidOrNull());
+        if (isSelf) {
+            String username = client.getSession().getUsername();
+            String nick = NickHiderConfig.getNickname();
+            cir.setReturnValue(NickTextUtil.replaceLiteralTextIgnoreCase(original, username, nick));
+        } else if (NickHiderConfig.isHideOthers()) {
+            String entryName = entry.getProfile().name();
+            if (entryName != null && !entryName.isEmpty()) {
+                cir.setReturnValue(NickTextUtil.replaceLiteralTextIgnoreCase(original, entryName, NickHiderConfig.getOthersNickname()));
+            }
+        }
     }
 }

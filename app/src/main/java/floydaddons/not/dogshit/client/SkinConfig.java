@@ -16,6 +16,7 @@ public final class SkinConfig {
 
     private static boolean selfEnabled = false;
     private static boolean othersEnabled = false;
+    private static String selectedSkin = "george-floyd.png";
 
     private SkinConfig() {}
 
@@ -24,6 +25,9 @@ public final class SkinConfig {
     public static void setSelfEnabled(boolean v) { selfEnabled = v; }
     public static void setOthersEnabled(boolean v) { othersEnabled = v; }
 
+    public static String getSelectedSkin() { return selectedSkin; }
+    public static void setSelectedSkin(String name) { selectedSkin = name != null ? name : ""; }
+
     public static void load() {
         if (!Files.exists(CONFIG_PATH)) return;
         try (Reader r = Files.newBufferedReader(CONFIG_PATH)) {
@@ -31,6 +35,7 @@ public final class SkinConfig {
             if (d != null) {
                 selfEnabled = d.selfEnabled;
                 othersEnabled = d.othersEnabled;
+                if (d.selectedSkin != null) selectedSkin = d.selectedSkin;
             }
         } catch (IOException ignored) {}
     }
@@ -39,6 +44,7 @@ public final class SkinConfig {
         Data d = new Data();
         d.selfEnabled = selfEnabled;
         d.othersEnabled = othersEnabled;
+        d.selectedSkin = selectedSkin;
         try {
             Files.createDirectories(CONFIG_PATH.getParent());
             try (Writer w = Files.newBufferedWriter(CONFIG_PATH)) {
@@ -50,6 +56,6 @@ public final class SkinConfig {
     private static class Data {
         boolean selfEnabled;
         boolean othersEnabled;
-        String skinPath;
+        String selectedSkin;
     }
 }

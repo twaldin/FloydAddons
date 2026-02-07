@@ -1,5 +1,33 @@
-# Ignore Gradle project-specific cache directory
-.gradle
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
 
-# Ignore Gradle build output directory
-build
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+*.swp
+
+# Fabric Loom dev runtime
+app/run/
+
+# Compiled classes
+*.class
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Extracted / decompiled Minecraft sources
+com/
+net/
+
+# Temp investigation files
+tmp_fapi/
+
+# Built JARs in root
+/*.jar

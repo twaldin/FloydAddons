@@ -6,6 +6,7 @@
     "NickHiderChatHudMixin",
     "NickHiderPlayerListHudMixin",
     "NickHiderScoreboardEntryMixin",
+    "NickHiderTextRendererMixin",
     "PlayerEntityRendererMixin"
   ],
   "injectors": {

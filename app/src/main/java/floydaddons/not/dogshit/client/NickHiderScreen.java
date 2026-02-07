@@ -17,6 +17,8 @@ public class NickHiderScreen extends Screen {
     private final Screen parent;
     private TextFieldWidget nickField;
     private ButtonWidget toggleButton;
+    private TextFieldWidget othersNickField;
+    private ButtonWidget toggleOthersButton;
     private ButtonWidget doneButton;
 
     private static final int BOX_WIDTH = 260;
@@ -51,7 +53,9 @@ public class NickHiderScreen extends Screen {
         panelX = savedX;
         panelY = savedY;
 
-        nickField = new TextFieldWidget(textRenderer, panelX + (BOX_WIDTH - 220) / 2, panelY + 20, 220, 20, Text.literal("Nickname"));
+        int cx = panelX + (BOX_WIDTH - 220) / 2;
+
+        nickField = new TextFieldWidget(textRenderer, cx, panelY + 16, 220, 20, Text.literal("Nickname"));
         nickField.setText(NickHiderConfig.getNickname());
         nickField.setEditableColor(0xFFFFFFFF);
         nickField.setUneditableColor(0xFFFFFFFF);
@@ -63,19 +67,38 @@ public class NickHiderScreen extends Screen {
             NickHiderConfig.setEnabled(!NickHiderConfig.isEnabled());
             button.setMessage(Text.literal(toggleLabel()));
             NickHiderConfig.save();
-        }).dimensions(panelX + (BOX_WIDTH - 220) / 2, panelY + 50, 220, 20).build();
+        }).dimensions(cx, panelY + 40, 220, 20).build();
+
+        othersNickField = new TextFieldWidget(textRenderer, cx, panelY + 68, 220, 20, Text.literal("Others Nickname"));
+        othersNickField.setText(NickHiderConfig.getOthersNickname());
+        othersNickField.setEditableColor(0xFFFFFFFF);
+        othersNickField.setUneditableColor(0xFFFFFFFF);
+        othersNickField.setDrawsBackground(false);
+        othersNickField.setCentered(true);
+
+        toggleOthersButton = ButtonWidget.builder(Text.literal(toggleOthersLabel()), button -> {
+            NickHiderConfig.setHideOthers(!NickHiderConfig.isHideOthers());
+            button.setMessage(Text.literal(toggleOthersLabel()));
+            NickHiderConfig.save();
+        }).dimensions(cx, panelY + 92, 220, 20).build();
 
         doneButton = ButtonWidget.builder(Text.literal("Done"), button -> close())
-                .dimensions(panelX + (BOX_WIDTH - 100) / 2, panelY + 120, 100, 20)
+                .dimensions(panelX + (BOX_WIDTH - 100) / 2, panelY + 152, 100, 20)
                 .build();
 
         addSelectableChild(nickField);
         addDrawableChild(toggleButton);
+        addSelectableChild(othersNickField);
+        addDrawableChild(toggleOthersButton);
         addDrawableChild(doneButton);
     }
 
     private String toggleLabel() {
         return "Neck Hider: " + (NickHiderConfig.isEnabled() ? "ON" : "OFF");
+    }
+
+    private String toggleOthersLabel() {
+        return "Hide Others: " + (NickHiderConfig.isHideOthers() ? "ON" : "OFF");
     }
 
     @Override
@@ -127,33 +150,19 @@ public class NickHiderScreen extends Screen {
 
         // Nick field custom background (solid black) + chroma outline, centered text
         int fieldFill = 0xFF000000;
-        context.fill(nickField.getX(), nickField.getY(), nickField.getX() + nickField.getWidth(), nickField.getY() + nickField.getHeight(), applyAlpha(fieldFill, guiAlpha));
-        drawChromaBorder(context,
-                nickField.getX() - 1, nickField.getY() - 1,
-                nickField.getX() + nickField.getWidth() + 1,
-                nickField.getY() + nickField.getHeight() + 1,
-                guiAlpha);
-        // Shift text/caret down a couple pixels so it sits vertically centered in the box.
-        context.getMatrices().pushMatrix();
-        context.getMatrices().translate(0f, 6f);
-        nickField.render(context, mouseX, mouseY, delta);
-        context.getMatrices().popMatrix();
+        renderTextField(context, nickField, fieldFill, guiAlpha, mouseX, mouseY, delta);
 
         // Toggle button chroma outline + text, flat fill
         styleButtonFlat(context, toggleButton, chromaFast, guiAlpha, mouseX, mouseY);
+
+        // Others nick field
+        renderTextField(context, othersNickField, fieldFill, guiAlpha, mouseX, mouseY, delta);
+
+        // Toggle others button
+        styleButtonFlat(context, toggleOthersButton, chromaFast, guiAlpha, mouseX, mouseY);
+
         // Done button chroma outline + text, flat fill
         styleButtonFlat(context, doneButton, chromaSlow, guiAlpha, mouseX, mouseY);
-
-        // Disclaimer text at bottom
-        String disclaimer = "Disclaimer: Neck Hider doesn't work in skyblock tablist/scoreboard. Will try to fix this later";
-        var lines = textRenderer.wrapLines(Text.literal(disclaimer), BOX_WIDTH - 16);
-        int lineY = toggleButton.getY() + toggleButton.getHeight() + 18;
-        for (var line : lines) {
-            int lw = textRenderer.getWidth(line);
-            int lx = panelX + (BOX_WIDTH - lw) / 2;
-            context.drawTextWithShadow(textRenderer, line, lx, lineY, applyAlpha(0xFFBBBBBB, guiAlpha));
-            lineY += textRenderer.fontHeight + 2;
-        }
 
         matrices.popMatrix();
     }
@@ -188,12 +197,17 @@ public class NickHiderScreen extends Screen {
             panelX = savedX = newX;
             panelY = savedY = newY;
             // also move controls
-            nickField.setX(panelX + (BOX_WIDTH - 220) / 2);
-            nickField.setY(panelY + 20);
-            toggleButton.setX(panelX + (BOX_WIDTH - 220) / 2);
-            toggleButton.setY(panelY + 50);
+            int cx = panelX + (BOX_WIDTH - 220) / 2;
+            nickField.setX(cx);
+            nickField.setY(panelY + 16);
+            toggleButton.setX(cx);
+            toggleButton.setY(panelY + 40);
+            othersNickField.setX(cx);
+            othersNickField.setY(panelY + 68);
+            toggleOthersButton.setX(cx);
+            toggleOthersButton.setY(panelY + 92);
             doneButton.setX(panelX + (BOX_WIDTH - 100) / 2);
-            doneButton.setY(panelY + 120);
+            doneButton.setY(panelY + 152);
             return true;
         }
         return super.mouseDragged(click, deltaX, deltaY);
@@ -216,6 +230,7 @@ public class NickHiderScreen extends Screen {
 
     private void finishClose() {
         NickHiderConfig.setNickname(nickField.getText());
+        NickHiderConfig.setOthersNickname(othersNickField.getText());
         NickHiderConfig.save();
         if (client != null) {
             client.setScreen(parent);
@@ -225,6 +240,19 @@ public class NickHiderScreen extends Screen {
     private float lerp(float a, float b, float t) {
         t = Math.max(0f, Math.min(1f, t));
         return a + (b - a) * t;
+    }
+
+    private void renderTextField(DrawContext context, TextFieldWidget field, int fillColor, float guiAlpha, int mouseX, int mouseY, float delta) {
+        context.fill(field.getX(), field.getY(), field.getX() + field.getWidth(), field.getY() + field.getHeight(), applyAlpha(fillColor, guiAlpha));
+        drawChromaBorder(context,
+                field.getX() - 1, field.getY() - 1,
+                field.getX() + field.getWidth() + 1,
+                field.getY() + field.getHeight() + 1,
+                guiAlpha);
+        context.getMatrices().pushMatrix();
+        context.getMatrices().translate(0f, 6f);
+        field.render(context, mouseX, mouseY, delta);
+        context.getMatrices().popMatrix();
     }
 
     private void styleButtonFlat(DrawContext context, ButtonWidget button, int chromaColor, float alpha, int mouseX, int mouseY) {
