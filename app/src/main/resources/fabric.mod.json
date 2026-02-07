@@ -18,5 +18,14 @@
     "minecraft": "1.21.10",
     "fabric-api": "*"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "custom": {
+    "modmenu": {
+      "hidden": true,
+      "parent": "minecraft",
+      "badges": [
+        "library"
+      ]
+    }
+  }
 }

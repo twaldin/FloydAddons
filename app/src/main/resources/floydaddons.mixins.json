@@ -7,7 +7,9 @@
     "NickHiderPlayerListHudMixin",
     "NickHiderScoreboardEntryMixin",
     "NickHiderTextRendererMixin",
-    "PlayerEntityRendererMixin"
+    "PlayerEntityRendererMixin",
+    "BrandSpoofMixin",
+    "FabricLoaderImplMixin"
   ],
   "injectors": {
     "defaultRequire": 1
