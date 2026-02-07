@@ -23,7 +23,7 @@ public class NickHiderScreen extends Screen {
     private ButtonWidget doneButton;
 
     private static final int BOX_WIDTH = 260;
-    private static final int BOX_HEIGHT = 230;
+    private static final int BOX_HEIGHT = 198;
     private static final long FADE_DURATION_MS = 90;
     private static final float SCALE_START = 0.85f;
     private static final int DRAG_BAR_HEIGHT = 18;
@@ -99,7 +99,7 @@ public class NickHiderScreen extends Screen {
         }).dimensions(cx + 113, panelY + 116, 107, 20).build();
 
         doneButton = ButtonWidget.builder(Text.literal("Done"), button -> close())
-                .dimensions(panelX + (BOX_WIDTH - 100) / 2, panelY + 200, 100, 20)
+                .dimensions(panelX + (BOX_WIDTH - 100) / 2, panelY + 168, 100, 20)
                 .build();
 
         addSelectableChild(nickField);
@@ -183,6 +183,15 @@ public class NickHiderScreen extends Screen {
         styleButtonFlat(context, editNamesButton, chromaSlow, guiAlpha, mouseX, mouseY);
         styleButtonFlat(context, reloadNamesButton, chromaSlow, guiAlpha, mouseX, mouseY);
 
+        // Mode description hints
+        String hint1 = "Config Only = change specific names only";
+        String hint2 = "File + Default = change all, override specific";
+        int hintColor = applyAlpha(0xFF888888, guiAlpha);
+        int hint1X = panelX + (BOX_WIDTH - textRenderer.getWidth(hint1)) / 2;
+        int hint2X = panelX + (BOX_WIDTH - textRenderer.getWidth(hint2)) / 2;
+        context.drawTextWithShadow(textRenderer, hint1, hint1X, panelY + 140, hintColor);
+        context.drawTextWithShadow(textRenderer, hint2, hint2X, panelY + 150, hintColor);
+
         // Done button chroma outline + text, flat fill
         styleButtonFlat(context, doneButton, chromaSlow, guiAlpha, mouseX, mouseY);
 
@@ -233,7 +242,7 @@ public class NickHiderScreen extends Screen {
             reloadNamesButton.setX(cx + 113);
             reloadNamesButton.setY(panelY + 116);
             doneButton.setX(panelX + (BOX_WIDTH - 100) / 2);
-            doneButton.setY(panelY + 200);
+            doneButton.setY(panelY + 168);
             return true;
         }
         return super.mouseDragged(click, deltaX, deltaY);
@@ -332,14 +341,19 @@ public class NickHiderScreen extends Screen {
         String file = path.toAbsolutePath().toString();
         String os = System.getProperty("os.name", "").toLowerCase();
         try {
+            ProcessBuilder pb;
             if (os.contains("win")) {
-                new ProcessBuilder("cmd", "/c", "start", "", file).start();
+                pb = new ProcessBuilder("cmd", "/c", "start", "", file);
             } else if (os.contains("mac")) {
-                new ProcessBuilder("open", file).start();
+                pb = new ProcessBuilder("open", file);
             } else {
-                // Linux / FreeBSD / etc.
-                new ProcessBuilder("xdg-open", file).start();
+                pb = new ProcessBuilder("sh", "-c", "xdg-open \"" + file + "\" &");
             }
+            java.io.File devNull = new java.io.File(os.contains("win") ? "NUL" : "/dev/null");
+            pb.redirectInput(ProcessBuilder.Redirect.from(devNull));
+            pb.redirectOutput(ProcessBuilder.Redirect.to(devNull));
+            pb.redirectError(ProcessBuilder.Redirect.to(devNull));
+            pb.start();
         } catch (Exception ignored) {
         }
     }

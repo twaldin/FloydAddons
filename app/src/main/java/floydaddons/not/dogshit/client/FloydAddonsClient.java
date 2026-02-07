@@ -30,6 +30,7 @@ public class FloydAddonsClient implements ClientModInitializer {
         ));
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            SkinManager.extractDefaultSkin(client);
             if (client.player == null) {
                 return;
             }

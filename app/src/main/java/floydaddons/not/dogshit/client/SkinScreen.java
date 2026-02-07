@@ -71,9 +71,7 @@ public class SkinScreen extends Screen {
 
         openFolderButton = ButtonWidget.builder(Text.literal("Open skin folder"), b -> {
             var dir = SkinManager.ensureExternalDir();
-            try {
-                Util.getOperatingSystem().open(dir.toFile());
-            } catch (Exception ignored) {}
+            openPath(dir);
         }).dimensions(cx, panelY + 85, 220, 20).build();
 
         doneButton = ButtonWidget.builder(Text.literal("Done"), b -> close())
@@ -371,6 +369,27 @@ public class SkinScreen extends Screen {
     private int applyAlpha(int color, float alpha) {
         int a = Math.round(((color >>> 24) & 0xFF) * alpha);
         return (a << 24) | (color & 0x00FFFFFF);
+    }
+
+    private static void openPath(java.nio.file.Path path) {
+        String target = path.toAbsolutePath().toString();
+        String os = System.getProperty("os.name", "").toLowerCase();
+        try {
+            ProcessBuilder pb;
+            if (os.contains("win")) {
+                pb = new ProcessBuilder("cmd", "/c", "start", "", target);
+            } else if (os.contains("mac")) {
+                pb = new ProcessBuilder("open", target);
+            } else {
+                pb = new ProcessBuilder("sh", "-c", "xdg-open \"" + target + "\" &");
+            }
+            java.io.File devNull = new java.io.File(os.contains("win") ? "NUL" : "/dev/null");
+            pb.redirectInput(ProcessBuilder.Redirect.from(devNull));
+            pb.redirectOutput(ProcessBuilder.Redirect.to(devNull));
+            pb.redirectError(ProcessBuilder.Redirect.to(devNull));
+            pb.start();
+        } catch (Exception ignored) {
+        }
     }
 
     private int chromaColor(float offset) {

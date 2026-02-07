@@ -65,10 +65,11 @@ public final class SkinManager {
     }
 
     /**
-     * On first load, extracts the bundled skin to the config folder as george-floyd.png
+     * Extracts the bundled skin to the skins folder as george-floyd.png
      * so end users get a default skin without manual setup.
+     * Called at startup and before texture loading.
      */
-    private static void extractDefaultSkin(MinecraftClient mc) {
+    public static void extractDefaultSkin(MinecraftClient mc) {
         if (defaultExtracted) return;
         defaultExtracted = true;
         ensureExternalDir();
