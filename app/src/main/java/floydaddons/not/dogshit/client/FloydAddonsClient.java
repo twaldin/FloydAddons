@@ -19,9 +19,7 @@ public class FloydAddonsClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
-        NickHiderConfig.load();
-        SkinConfig.load();
-        RenderConfig.load();
+        FloydAddonsConfig.load();
         InventoryHudRenderer.register();
 
         openGuiKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
@@ -32,6 +30,7 @@ public class FloydAddonsClient implements ClientModInitializer {
         ));
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            SkinManager.extractDefaultSkin(client);
             if (client.player == null) {
                 return;
             }
@@ -41,9 +40,7 @@ public class FloydAddonsClient implements ClientModInitializer {
         });
 
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
-            NickHiderConfig.save();
-            SkinConfig.save();
-            RenderConfig.save();
+            FloydAddonsConfig.save();
         });
     }
 }

@@ -7,7 +7,6 @@ import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.text.Text;
 import net.minecraft.util.Util;
-import floydaddons.not.dogshit.client.NickTextUtil;
 
 /**
  * Simple configuration screen for the Nick Hider feature.
@@ -19,10 +18,12 @@ public class NickHiderScreen extends Screen {
     private ButtonWidget toggleButton;
     private TextFieldWidget othersNickField;
     private ButtonWidget toggleOthersButton;
+    private ButtonWidget editNamesButton;
+    private ButtonWidget reloadNamesButton;
     private ButtonWidget doneButton;
 
     private static final int BOX_WIDTH = 260;
-    private static final int BOX_HEIGHT = 180;
+    private static final int BOX_HEIGHT = 208;
     private static final long FADE_DURATION_MS = 90;
     private static final float SCALE_START = 0.85f;
     private static final int DRAG_BAR_HEIGHT = 18;
@@ -77,19 +78,36 @@ public class NickHiderScreen extends Screen {
         othersNickField.setCentered(true);
 
         toggleOthersButton = ButtonWidget.builder(Text.literal(toggleOthersLabel()), button -> {
-            NickHiderConfig.setHideOthers(!NickHiderConfig.isHideOthers());
+            NickHiderConfig.setHideOthersMode(NickHiderConfig.getHideOthersMode().next());
             button.setMessage(Text.literal(toggleOthersLabel()));
             NickHiderConfig.save();
         }).dimensions(cx, panelY + 92, 220, 20).build();
 
+        editNamesButton = ButtonWidget.builder(Text.literal("Edit Names File"), button -> {
+            try {
+                java.nio.file.Path path = NickHiderConfig.getNamesConfigPath();
+                if (!java.nio.file.Files.exists(path)) {
+                    NickHiderConfig.loadNameMappings(); // creates template
+                }
+                openFileInEditor(path);
+            } catch (Exception ignored) {
+            }
+        }).dimensions(cx, panelY + 116, 107, 20).build();
+
+        reloadNamesButton = ButtonWidget.builder(Text.literal("Reload Names"), button -> {
+            NickHiderConfig.loadNameMappings();
+        }).dimensions(cx + 113, panelY + 116, 107, 20).build();
+
         doneButton = ButtonWidget.builder(Text.literal("Done"), button -> close())
-                .dimensions(panelX + (BOX_WIDTH - 100) / 2, panelY + 152, 100, 20)
+                .dimensions(panelX + (BOX_WIDTH - 100) / 2, panelY + 178, 100, 20)
                 .build();
 
         addSelectableChild(nickField);
         addDrawableChild(toggleButton);
         addSelectableChild(othersNickField);
         addDrawableChild(toggleOthersButton);
+        addDrawableChild(editNamesButton);
+        addDrawableChild(reloadNamesButton);
         addDrawableChild(doneButton);
     }
 
@@ -98,7 +116,7 @@ public class NickHiderScreen extends Screen {
     }
 
     private String toggleOthersLabel() {
-        return "Hide Others: " + (NickHiderConfig.isHideOthers() ? "ON" : "OFF");
+        return "Hide Others: " + NickHiderConfig.getHideOthersMode().getLabel();
     }
 
     @Override
@@ -161,6 +179,22 @@ public class NickHiderScreen extends Screen {
         // Toggle others button
         styleButtonFlat(context, toggleOthersButton, chromaFast, guiAlpha, mouseX, mouseY);
 
+        // Edit/Reload names buttons
+        styleButtonFlat(context, editNamesButton, chromaSlow, guiAlpha, mouseX, mouseY);
+        styleButtonFlat(context, reloadNamesButton, chromaSlow, guiAlpha, mouseX, mouseY);
+
+        // Mode description hints
+        String hint1 = "Config Only = change specific names only";
+        String hint2 = "File + Default = change all, override specific";
+        String hint3 = "Only affects players in your current lobby";
+        int hintColor = applyAlpha(0xFF888888, guiAlpha);
+        int hint1X = panelX + (BOX_WIDTH - textRenderer.getWidth(hint1)) / 2;
+        int hint2X = panelX + (BOX_WIDTH - textRenderer.getWidth(hint2)) / 2;
+        int hint3X = panelX + (BOX_WIDTH - textRenderer.getWidth(hint3)) / 2;
+        context.drawTextWithShadow(textRenderer, hint1, hint1X, panelY + 140, hintColor);
+        context.drawTextWithShadow(textRenderer, hint2, hint2X, panelY + 150, hintColor);
+        context.drawTextWithShadow(textRenderer, hint3, hint3X, panelY + 160, hintColor);
+
         // Done button chroma outline + text, flat fill
         styleButtonFlat(context, doneButton, chromaSlow, guiAlpha, mouseX, mouseY);
 
@@ -206,8 +240,12 @@ public class NickHiderScreen extends Screen {
             othersNickField.setY(panelY + 68);
             toggleOthersButton.setX(cx);
             toggleOthersButton.setY(panelY + 92);
+            editNamesButton.setX(cx);
+            editNamesButton.setY(panelY + 116);
+            reloadNamesButton.setX(cx + 113);
+            reloadNamesButton.setY(panelY + 116);
             doneButton.setX(panelX + (BOX_WIDTH - 100) / 2);
-            doneButton.setY(panelY + 152);
+            doneButton.setY(panelY + 178);
             return true;
         }
         return super.mouseDragged(click, deltaX, deltaY);
@@ -300,6 +338,27 @@ public class NickHiderScreen extends Screen {
     private int applyAlpha(int color, float alpha) {
         int a = Math.round(((color >>> 24) & 0xFF) * alpha);
         return (a << 24) | (color & 0x00FFFFFF);
+    }
+
+    private static void openFileInEditor(java.nio.file.Path path) {
+        String file = path.toAbsolutePath().toString();
+        String os = System.getProperty("os.name", "").toLowerCase();
+        try {
+            ProcessBuilder pb;
+            if (os.contains("win")) {
+                pb = new ProcessBuilder("cmd", "/c", "start", "", file);
+            } else if (os.contains("mac")) {
+                pb = new ProcessBuilder("open", file);
+            } else {
+                pb = new ProcessBuilder("sh", "-c", "xdg-open \"" + file + "\" &");
+            }
+            java.io.File devNull = new java.io.File(os.contains("win") ? "NUL" : "/dev/null");
+            pb.redirectInput(ProcessBuilder.Redirect.from(devNull));
+            pb.redirectOutput(ProcessBuilder.Redirect.to(devNull));
+            pb.redirectError(ProcessBuilder.Redirect.to(devNull));
+            pb.start();
+        } catch (Exception ignored) {
+        }
     }
 
     private int chromaColor(float offset) {
