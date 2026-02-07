@@ -5,6 +5,7 @@ import floydaddons.not.dogshit.client.NickTextUtil;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.hud.ChatHud;
 import net.minecraft.client.gui.hud.MessageIndicator;
+import net.minecraft.client.network.PlayerListEntry;
 import net.minecraft.network.message.MessageSignatureData;
 import net.minecraft.text.Text;
 import org.spongepowered.asm.mixin.Mixin;
@@ -29,7 +30,20 @@ public class NickHiderChatHudMixin {
         String nick = NickHiderConfig.getNickname();
 
         Text replaced = NickTextUtil.replaceLiteralTextIgnoreCase(message, username, nick);
-        // Replace message only if something changed
+
+        // Replace other players' names in chat
+        if (NickHiderConfig.isHideOthers() && client.getNetworkHandler() != null) {
+            String othersNick = NickHiderConfig.getOthersNickname();
+            for (PlayerListEntry entry : client.getNetworkHandler().getPlayerList()) {
+                if (entry.getProfile() == null) continue;
+                if (entry.getProfile().id().equals(client.getSession().getUuidOrNull())) continue;
+                String name = entry.getProfile().name();
+                if (name != null && !name.isEmpty()) {
+                    replaced = NickTextUtil.replaceLiteralTextIgnoreCase(replaced, name, othersNick);
+                }
+            }
+        }
+
         if (replaced != message) {
             floydaddons$inside.set(true);
             ((ChatHud) (Object) this).addMessage(replaced, signature, indicator);
