@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 /**
  * Hooks into TextRenderer at the lowest level to replace player names everywhere.
  *
- * In 1.21.10, all three draw() overloads funnel through prepare():
+ * In 1.21.11, all three draw() overloads funnel through prepare():
  *   draw(String, ...)       → prepare(String, ...)
  *   draw(Text, ...)         → text.asOrderedText() → prepare(OrderedText, ...)
  *   draw(OrderedText, ...)  → prepare(OrderedText, ...)
@@ -38,7 +38,7 @@ public class NickHiderTextRendererMixin {
     }
 
     @ModifyVariable(
-        method = "prepare(Lnet/minecraft/text/OrderedText;FFIZI)Lnet/minecraft/client/font/TextRenderer$GlyphDrawable;",
+        method = "prepare(Lnet/minecraft/text/OrderedText;FFIZZI)Lnet/minecraft/client/font/TextRenderer$GlyphDrawable;",
         at = @At("HEAD"),
         argsOnly = true,
         ordinal = 0
