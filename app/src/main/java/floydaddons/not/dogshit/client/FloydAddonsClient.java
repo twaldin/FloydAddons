@@ -21,6 +21,7 @@ public class FloydAddonsClient implements ClientModInitializer {
     public void onInitializeClient() {
         FloydAddonsConfig.load();
         InventoryHudRenderer.register();
+        ScoreboardHudRenderer.register();
 
         openGuiKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.floydaddons.open_gui",

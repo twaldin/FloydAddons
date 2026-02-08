@@ -6,7 +6,8 @@
     "NickHiderTextRendererMixin",
     "PlayerEntityRendererMixin",
     "BrandSpoofMixin",
-    "FabricLoaderImplMixin"
+    "FabricLoaderImplMixin",
+    "ScoreboardSidebarMixin"
   ],
   "injectors": {
     "defaultRequire": 1
