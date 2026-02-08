@@ -63,8 +63,6 @@ public final class FloydAddonsConfig {
         // Nick hider
         data.nickHiderEnabled = NickHiderConfig.isEnabled();
         data.nickname = NickHiderConfig.getNickname();
-        data.hideOthersMode = NickHiderConfig.getHideOthersMode().name();
-        data.othersNickname = NickHiderConfig.getOthersNickname();
         // Skin
         data.skinSelfEnabled = SkinConfig.selfEnabled();
         data.skinOthersEnabled = SkinConfig.othersEnabled();
@@ -75,6 +73,11 @@ public final class FloydAddonsConfig {
         data.inventoryHudY = RenderConfig.getInventoryHudY();
         data.inventoryHudScale = RenderConfig.getInventoryHudScale();
         data.floydHatEnabled = RenderConfig.isFloydHatEnabled();
+        data.customScoreboardEnabled = RenderConfig.isCustomScoreboardEnabled();
+        data.customScoreboardX = RenderConfig.getCustomScoreboardX();
+        data.customScoreboardY = RenderConfig.getCustomScoreboardY();
+        data.serverIdHiderEnabled = RenderConfig.isServerIdHiderEnabled();
+        data.serverIdReplacement = RenderConfig.getServerIdReplacement();
 
         try {
             try (Writer w = Files.newBufferedWriter(CONFIG_PATH)) {
@@ -119,14 +122,6 @@ public final class FloydAddonsConfig {
     private static void loadNickHider(Data data) {
         if (data.nickname != null && !data.nickname.isEmpty()) NickHiderConfig.setNickname(data.nickname);
         NickHiderConfig.setEnabled(data.nickHiderEnabled);
-        if (data.hideOthersMode != null) {
-            try {
-                NickHiderConfig.setHideOthersMode(NickHiderConfig.HideOthersMode.valueOf(data.hideOthersMode));
-            } catch (IllegalArgumentException e) {
-                NickHiderConfig.setHideOthersMode(NickHiderConfig.HideOthersMode.OFF);
-            }
-        }
-        if (data.othersNickname != null && !data.othersNickname.isEmpty()) NickHiderConfig.setOthersNickname(data.othersNickname);
     }
 
     private static void loadSkin(Data data) {
@@ -141,14 +136,17 @@ public final class FloydAddonsConfig {
         RenderConfig.setInventoryHudY(data.inventoryHudY);
         RenderConfig.setInventoryHudScale(data.inventoryHudScale);
         RenderConfig.setFloydHatEnabled(data.floydHatEnabled);
+        RenderConfig.setCustomScoreboardEnabled(data.customScoreboardEnabled);
+        RenderConfig.setCustomScoreboardX(data.customScoreboardX);
+        RenderConfig.setCustomScoreboardY(data.customScoreboardY);
+        RenderConfig.setServerIdHiderEnabled(data.serverIdHiderEnabled);
+        if (data.serverIdReplacement != null) RenderConfig.setServerIdReplacement(data.serverIdReplacement);
     }
 
     private static class Data {
         // Nick hider
         boolean nickHiderEnabled;
         String nickname;
-        String hideOthersMode;
-        String othersNickname;
         // Skin
         boolean skinSelfEnabled;
         boolean skinOthersEnabled;
@@ -159,5 +157,10 @@ public final class FloydAddonsConfig {
         int inventoryHudY;
         float inventoryHudScale;
         boolean floydHatEnabled;
+        boolean customScoreboardEnabled;
+        int customScoreboardX;
+        int customScoreboardY;
+        boolean serverIdHiderEnabled;
+        String serverIdReplacement;
     }
 }
