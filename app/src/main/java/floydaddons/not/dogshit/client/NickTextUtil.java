@@ -11,7 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * Small helper to replace occurrences of a string within literal text nodes,
@@ -19,6 +19,8 @@ import java.util.Set;
  */
 public final class NickTextUtil {
     private NickTextUtil() {}
+
+    private static final Pattern SERVER_ID_PATTERN = Pattern.compile("\\b[a-zA-Z]{1,4}\\d{1,4}[a-zA-Z]{1,2}\\b");
 
     public static Text replaceLiteralText(Text original, String find, String replace) {
         return replaceLiteralTextInternal(original, find, replace, false);
@@ -98,35 +100,32 @@ public final class NickTextUtil {
 
     /**
      * Applies all nick-hider replacements (self + others) to rendered OrderedText.
+     * Also applies server ID hider independently.
      * Called from the TextRenderer mixin on every piece of text drawn to screen.
      */
     public static OrderedText replaceAllNamesInOrderedText(OrderedText original) {
-        if (!NickHiderConfig.isEnabled()) return original;
+        boolean nickEnabled = NickHiderConfig.isEnabled();
+        boolean serverIdEnabled = RenderConfig.isServerIdHiderEnabled();
+        if (!nickEnabled && !serverIdEnabled) return original;
 
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client == null || client.getSession() == null) return original;
+        OrderedText result = original;
 
-        String username = client.getSession().getUsername();
-        if (username == null || username.isEmpty()) return original;
-
-        OrderedText result = replaceInOrderedText(original, username, NickHiderConfig.getNickname());
-
-        NickHiderConfig.HideOthersMode mode = NickHiderConfig.getHideOthersMode();
-        if (mode != NickHiderConfig.HideOthersMode.OFF) {
-            Map<String, String> mappingsLower = NickHiderConfig.getNameMappingsLower();
-            String defaultNick = NickHiderConfig.getOthersNickname();
-
-            for (String name : NickHiderConfig.getCachedOtherNames()) {
-                String mapped = mappingsLower.get(name.toLowerCase());
-                if (mapped != null) {
-                    // Player has an explicit mapping in the config file
-                    result = replaceInOrderedText(result, name, mapped);
-                } else if (mode == NickHiderConfig.HideOthersMode.CONFIG_AND_DEFAULT) {
-                    // No mapping, but mode includes default replacement
-                    result = replaceInOrderedText(result, name, defaultNick);
+        if (nickEnabled) {
+            MinecraftClient client = MinecraftClient.getInstance();
+            if (client != null && client.getSession() != null) {
+                String username = client.getSession().getUsername();
+                if (username != null && !username.isEmpty()) {
+                    result = replaceInOrderedText(result, username, NickHiderConfig.getNickname());
                 }
-                // CONFIG_ONLY with no mapping: skip this player
             }
+
+            for (Map.Entry<String, String> entry : NickHiderConfig.getNameMappings().entrySet()) {
+                result = replaceInOrderedText(result, entry.getKey(), entry.getValue());
+            }
+        }
+
+        if (serverIdEnabled) {
+            result = replaceServerIdsInOrderedText(result);
         }
 
         return result;
@@ -134,33 +133,33 @@ public final class NickTextUtil {
 
     /**
      * Applies all nick-hider replacements to a raw String.
+     * Also applies server ID hider independently.
      * Called from the TextRenderer mixin for String-based draw/prepare/getWidth calls.
      */
     public static String replaceAllNamesInString(String text) {
-        if (!NickHiderConfig.isEnabled()) return text;
+        boolean nickEnabled = NickHiderConfig.isEnabled();
+        boolean serverIdEnabled = RenderConfig.isServerIdHiderEnabled();
+        if (!nickEnabled && !serverIdEnabled) return text;
         if (text == null || text.isEmpty()) return text;
 
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client == null || client.getSession() == null) return text;
+        String result = text;
 
-        String username = client.getSession().getUsername();
-        if (username == null || username.isEmpty()) return text;
-
-        String result = caseInsensitiveReplace(text, username, NickHiderConfig.getNickname());
-
-        NickHiderConfig.HideOthersMode mode = NickHiderConfig.getHideOthersMode();
-        if (mode != NickHiderConfig.HideOthersMode.OFF) {
-            Map<String, String> mappingsLower = NickHiderConfig.getNameMappingsLower();
-            String defaultNick = NickHiderConfig.getOthersNickname();
-
-            for (String name : NickHiderConfig.getCachedOtherNames()) {
-                String mapped = mappingsLower.get(name.toLowerCase());
-                if (mapped != null) {
-                    result = caseInsensitiveReplace(result, name, mapped);
-                } else if (mode == NickHiderConfig.HideOthersMode.CONFIG_AND_DEFAULT) {
-                    result = caseInsensitiveReplace(result, name, defaultNick);
+        if (nickEnabled) {
+            MinecraftClient client = MinecraftClient.getInstance();
+            if (client != null && client.getSession() != null) {
+                String username = client.getSession().getUsername();
+                if (username != null && !username.isEmpty()) {
+                    result = caseInsensitiveReplace(result, username, NickHiderConfig.getNickname());
                 }
             }
+
+            for (Map.Entry<String, String> entry : NickHiderConfig.getNameMappings().entrySet()) {
+                result = caseInsensitiveReplace(result, entry.getKey(), entry.getValue());
+            }
+        }
+
+        if (serverIdEnabled) {
+            result = SERVER_ID_PATTERN.matcher(result).replaceAll(RenderConfig.getServerIdReplacement());
         }
 
         return result;
@@ -168,31 +167,38 @@ public final class NickTextUtil {
 
     /**
      * Applies all nick-hider replacements to a StringVisitable (used by getWidth(StringVisitable)).
+     * Also applies server ID hider independently.
      */
     public static StringVisitable replaceAllNamesInStringVisitable(StringVisitable text) {
-        if (!NickHiderConfig.isEnabled()) return text;
+        boolean nickEnabled = NickHiderConfig.isEnabled();
+        boolean serverIdEnabled = RenderConfig.isServerIdHiderEnabled();
+        if (!nickEnabled && !serverIdEnabled) return text;
+
         if (text instanceof Text t) {
-            MinecraftClient client = MinecraftClient.getInstance();
-            if (client == null || client.getSession() == null) return text;
-            String username = client.getSession().getUsername();
-            if (username == null || username.isEmpty()) return text;
+            Text result = t;
 
-            Text result = replaceLiteralTextIgnoreCase(t, username, NickHiderConfig.getNickname());
-
-            NickHiderConfig.HideOthersMode mode = NickHiderConfig.getHideOthersMode();
-            if (mode != NickHiderConfig.HideOthersMode.OFF) {
-                Map<String, String> mappingsLower = NickHiderConfig.getNameMappingsLower();
-                String defaultNick = NickHiderConfig.getOthersNickname();
-
-                for (String name : NickHiderConfig.getCachedOtherNames()) {
-                    String mapped = mappingsLower.get(name.toLowerCase());
-                    if (mapped != null) {
-                        result = replaceLiteralTextIgnoreCase(result, name, mapped);
-                    } else if (mode == NickHiderConfig.HideOthersMode.CONFIG_AND_DEFAULT) {
-                        result = replaceLiteralTextIgnoreCase(result, name, defaultNick);
+            if (nickEnabled) {
+                MinecraftClient client = MinecraftClient.getInstance();
+                if (client != null && client.getSession() != null) {
+                    String username = client.getSession().getUsername();
+                    if (username != null && !username.isEmpty()) {
+                        result = replaceLiteralTextIgnoreCase(result, username, NickHiderConfig.getNickname());
                     }
                 }
+
+                for (Map.Entry<String, String> entry : NickHiderConfig.getNameMappings().entrySet()) {
+                    result = replaceLiteralTextIgnoreCase(result, entry.getKey(), entry.getValue());
+                }
             }
+
+            if (serverIdEnabled) {
+                String content = result.getString();
+                String replaced = SERVER_ID_PATTERN.matcher(content).replaceAll(RenderConfig.getServerIdReplacement());
+                if (!replaced.equals(content)) {
+                    result = Text.literal(replaced).setStyle(result.getStyle());
+                }
+            }
+
             return result;
         }
         // Non-Text StringVisitable: extract string, replace, wrap
@@ -219,6 +225,64 @@ public final class NickTextUtil {
             idx = hit + find.length();
         }
         return result.toString();
+    }
+
+    private static OrderedText replaceServerIdsInOrderedText(OrderedText original) {
+        List<Integer> codePoints = new ArrayList<>();
+        List<Style> styles = new ArrayList<>();
+        StringBuilder sb = new StringBuilder();
+
+        original.accept((index, style, codePoint) -> {
+            codePoints.add(codePoint);
+            styles.add(style);
+            sb.appendCodePoint(codePoint);
+            return true;
+        });
+
+        if (codePoints.isEmpty()) return original;
+
+        String text = sb.toString();
+        String replaced = SERVER_ID_PATTERN.matcher(text).replaceAll(RenderConfig.getServerIdReplacement());
+        if (replaced.equals(text)) return original;
+
+        // Supplementary character fallback
+        if (text.length() != codePoints.size()) {
+            return OrderedText.styledForwardsVisitedString(replaced, styles.get(0));
+        }
+
+        // Rebuild with per-character styles using a diff approach
+        String replacement = RenderConfig.getServerIdReplacement();
+        java.util.regex.Matcher matcher = SERVER_ID_PATTERN.matcher(text);
+        List<Integer> resultCPs = new ArrayList<>();
+        List<Style> resultStyles = new ArrayList<>();
+        int idx = 0;
+        while (matcher.find()) {
+            int start = matcher.start();
+            int end = matcher.end();
+            for (int i = idx; i < start; i++) {
+                resultCPs.add(codePoints.get(i));
+                resultStyles.add(styles.get(i));
+            }
+            Style matchStyle = styles.get(start);
+            for (int i = 0; i < replacement.length(); i++) {
+                resultCPs.add((int) replacement.charAt(i));
+                resultStyles.add(matchStyle);
+            }
+            idx = end;
+        }
+        for (int i = idx; i < codePoints.size(); i++) {
+            resultCPs.add(codePoints.get(i));
+            resultStyles.add(styles.get(i));
+        }
+
+        List<Integer> finalCPs = List.copyOf(resultCPs);
+        List<Style> finalStyles = List.copyOf(resultStyles);
+        return visitor -> {
+            for (int i = 0; i < finalCPs.size(); i++) {
+                if (!visitor.accept(i, finalStyles.get(i), finalCPs.get(i))) return false;
+            }
+            return true;
+        };
     }
 
     private static Text replaceLiteralTextInternal(Text original, String find, String replace, boolean ignoreCase) {

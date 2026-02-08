@@ -31,3 +31,6 @@ tmp_fapi/
 
 # Built JARs in root
 /*.jar
+
+# Claude Code
+CLAUDE.md

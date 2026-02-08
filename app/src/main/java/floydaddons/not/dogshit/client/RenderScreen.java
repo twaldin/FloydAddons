@@ -15,6 +15,9 @@ public class RenderScreen extends Screen {
 
     private ButtonWidget inventoryToggle;
     private ButtonWidget moveButton;
+    private ButtonWidget scoreboardToggle;
+    private ButtonWidget moveScoreboardButton;
+    private ButtonWidget serverIdToggle;
     private ButtonWidget doneButton;
 
     private static final int BOX_WIDTH = 320;
@@ -59,16 +62,37 @@ public class RenderScreen extends Screen {
             if (client != null) client.setScreen(new MoveInventoryScreen(this));
         }).dimensions(panelX + (BOX_WIDTH - 220) / 2, panelY + 58, 220, 20).build();
 
+        scoreboardToggle = ButtonWidget.builder(Text.literal(scoreboardLabel()), b -> {
+            RenderConfig.setCustomScoreboardEnabled(!RenderConfig.isCustomScoreboardEnabled());
+            b.setMessage(Text.literal(scoreboardLabel()));
+            RenderConfig.save();
+        }).dimensions(panelX + (BOX_WIDTH - 220) / 2, panelY + 88, 220, 20).build();
+
+        moveScoreboardButton = ButtonWidget.builder(Text.literal("Move Scoreboard"), b -> {
+            if (client != null) client.setScreen(new MoveScoreboardScreen(this));
+        }).dimensions(panelX + (BOX_WIDTH - 220) / 2, panelY + 118, 220, 20).build();
+
+        serverIdToggle = ButtonWidget.builder(Text.literal(serverIdLabel()), b -> {
+            RenderConfig.setServerIdHiderEnabled(!RenderConfig.isServerIdHiderEnabled());
+            b.setMessage(Text.literal(serverIdLabel()));
+            RenderConfig.save();
+        }).dimensions(panelX + (BOX_WIDTH - 220) / 2, panelY + 148, 220, 20).build();
+
         doneButton = ButtonWidget.builder(Text.literal("Done"), b -> close())
                 .dimensions(panelX + (BOX_WIDTH - 100) / 2, panelY + BOX_HEIGHT - 40, 100, 20)
                 .build();
 
         addDrawableChild(inventoryToggle);
         addDrawableChild(moveButton);
+        addDrawableChild(scoreboardToggle);
+        addDrawableChild(moveScoreboardButton);
+        addDrawableChild(serverIdToggle);
         addDrawableChild(doneButton);
     }
 
     private String inventoryLabel() { return "Inventory HUD: " + (RenderConfig.isInventoryHudEnabled() ? "ON" : "OFF"); }
+    private String scoreboardLabel() { return "Custom Scoreboard: " + (RenderConfig.isCustomScoreboardEnabled() ? "ON" : "OFF"); }
+    private String serverIdLabel() { return "Server ID Hider: " + (RenderConfig.isServerIdHiderEnabled() ? "ON" : "OFF"); }
 
     @Override
     public void close() {
@@ -120,6 +144,9 @@ public class RenderScreen extends Screen {
 
         styleButton(context, inventoryToggle, guiAlpha, mouseX, mouseY);
         styleButton(context, moveButton, guiAlpha, mouseX, mouseY);
+        styleButton(context, scoreboardToggle, guiAlpha, mouseX, mouseY);
+        styleButton(context, moveScoreboardButton, guiAlpha, mouseX, mouseY);
+        styleButton(context, serverIdToggle, guiAlpha, mouseX, mouseY);
         styleButton(context, doneButton, guiAlpha, mouseX, mouseY);
 
         // Title
@@ -165,6 +192,12 @@ public class RenderScreen extends Screen {
                 inventoryToggle.setY(panelY + 28);
                 moveButton.setX(panelX + (BOX_WIDTH - 220) / 2);
                 moveButton.setY(panelY + 58);
+                scoreboardToggle.setX(panelX + (BOX_WIDTH - 220) / 2);
+                scoreboardToggle.setY(panelY + 88);
+                moveScoreboardButton.setX(panelX + (BOX_WIDTH - 220) / 2);
+                moveScoreboardButton.setY(panelY + 118);
+                serverIdToggle.setX(panelX + (BOX_WIDTH - 220) / 2);
+                serverIdToggle.setY(panelY + 148);
                 doneButton.setX(panelX + (BOX_WIDTH - 100) / 2);
                 doneButton.setY(panelY + BOX_HEIGHT - 40);
                 return true;
