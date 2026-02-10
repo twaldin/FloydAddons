@@ -128,7 +128,11 @@ public class RenderScreen extends Screen {
         // Row 5: Open File + Reload Blocks
         openFileButton = ButtonWidget.builder(Text.literal("Open File"), b -> {
             try {
-                Util.getOperatingSystem().open(FloydAddonsConfig.getXrayOpaquePath().toUri());
+                java.nio.file.Path path = FloydAddonsConfig.getXrayOpaquePath();
+                if (!java.nio.file.Files.exists(path)) {
+                    FloydAddonsConfig.loadXrayOpaque(); // creates template
+                }
+                openFileInEditor(path);
             } catch (Exception ignored) {}
         }).dimensions(le, rowY(5), HALF_W, ROW_HEIGHT).build();
 
@@ -339,6 +343,27 @@ public class RenderScreen extends Screen {
         float hue = (float) ((time + offset) % 1.0);
         int rgb = java.awt.Color.HSBtoRGB(hue, 1.0f, 1.0f);
         return 0xFF000000 | (rgb & 0xFFFFFF);
+    }
+
+    private static void openFileInEditor(java.nio.file.Path path) {
+        String file = path.toAbsolutePath().toString();
+        String os = System.getProperty("os.name", "").toLowerCase();
+        try {
+            ProcessBuilder pb;
+            if (os.contains("win")) {
+                pb = new ProcessBuilder("cmd", "/c", "start", "", file);
+            } else if (os.contains("mac")) {
+                pb = new ProcessBuilder("open", file);
+            } else {
+                pb = new ProcessBuilder("sh", "-c", "xdg-open \"" + file + "\" &");
+            }
+            java.io.File devNull = new java.io.File(os.contains("win") ? "NUL" : "/dev/null");
+            pb.redirectInput(ProcessBuilder.Redirect.from(devNull));
+            pb.redirectOutput(ProcessBuilder.Redirect.to(devNull));
+            pb.redirectError(ProcessBuilder.Redirect.to(devNull));
+            pb.start();
+        } catch (Exception ignored) {
+        }
     }
 
     private int clamp(int v, int min, int max) { return Math.max(min, Math.min(max, v)); }
