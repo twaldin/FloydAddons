@@ -14,7 +14,10 @@ import java.nio.file.Path;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Unified config persistence for all FloydAddons settings.
@@ -28,6 +31,7 @@ public final class FloydAddonsConfig {
     public static final Path CONFIG_DIR = FabricLoader.getInstance().getConfigDir().resolve("floydaddons");
     private static final Path CONFIG_PATH = CONFIG_DIR.resolve("config.json");
     private static final Path NAMES_PATH = CONFIG_DIR.resolve("name-mappings.json");
+    private static final Path XRAY_OPAQUE_PATH = CONFIG_DIR.resolve("xray-opaque.json");
 
     private FloydAddonsConfig() {}
 
@@ -37,6 +41,10 @@ public final class FloydAddonsConfig {
 
     public static Path getNamesPath() {
         return NAMES_PATH;
+    }
+
+    public static Path getXrayOpaquePath() {
+        return XRAY_OPAQUE_PATH;
     }
 
     /** Loads all settings from the unified config file and the name mappings file. */
@@ -54,6 +62,7 @@ public final class FloydAddonsConfig {
             }
         }
         loadNameMappings();
+        loadXrayOpaque();
     }
 
     /** Saves all settings to the unified config file. */
@@ -78,6 +87,7 @@ public final class FloydAddonsConfig {
         data.customScoreboardY = RenderConfig.getCustomScoreboardY();
         data.serverIdHiderEnabled = RenderConfig.isServerIdHiderEnabled();
         data.serverIdReplacement = RenderConfig.getServerIdReplacement();
+        data.xrayOpacity = RenderConfig.getXrayOpacity();
 
         try {
             try (Writer w = Files.newBufferedWriter(CONFIG_PATH)) {
@@ -115,6 +125,25 @@ public final class FloydAddonsConfig {
         }
     }
 
+    /** Loads xray opaque block list. Creates a default file if missing. */
+    public static void loadXrayOpaque() {
+        ensureDir();
+        if (!Files.exists(XRAY_OPAQUE_PATH)) {
+            // Write default list
+            try (Writer w = Files.newBufferedWriter(XRAY_OPAQUE_PATH)) {
+                GSON.toJson(RenderConfig.defaultXrayOpaqueBlocks(), w);
+            } catch (IOException ignored) {}
+            return;
+        }
+        try (Reader r = Files.newBufferedReader(XRAY_OPAQUE_PATH)) {
+            Type type = new TypeToken<List<String>>() {}.getType();
+            List<String> loaded = GSON.fromJson(r, type);
+            if (loaded != null) {
+                RenderConfig.setXrayOpaqueBlocks(Collections.unmodifiableSet(new LinkedHashSet<>(loaded)));
+            }
+        } catch (IOException ignored) {}
+    }
+
     private static void ensureDir() {
         try { Files.createDirectories(CONFIG_DIR); } catch (IOException ignored) {}
     }
@@ -141,6 +170,7 @@ public final class FloydAddonsConfig {
         RenderConfig.setCustomScoreboardY(data.customScoreboardY);
         RenderConfig.setServerIdHiderEnabled(data.serverIdHiderEnabled);
         if (data.serverIdReplacement != null) RenderConfig.setServerIdReplacement(data.serverIdReplacement);
+        if (data.xrayOpacity > 0) RenderConfig.setXrayOpacity(data.xrayOpacity);
     }
 
     private static class Data {
@@ -162,5 +192,6 @@ public final class FloydAddonsConfig {
         int customScoreboardY;
         boolean serverIdHiderEnabled;
         String serverIdReplacement;
+        float xrayOpacity;
     }
 }

@@ -32,5 +32,8 @@ tmp_fapi/
 # Built JARs in root
 /*.jar
 
+# Deploy script (local paths)
+deploy.sh
+
 # Claude Code
 CLAUDE.md
