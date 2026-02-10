@@ -6,6 +6,8 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.ingame.InventoryScreen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.SliderWidget;
+import net.minecraft.client.input.CharInput;
+import net.minecraft.client.input.KeyInput;
 import net.minecraft.text.Text;
 import net.minecraft.util.Util;
 
@@ -14,22 +16,27 @@ import java.util.List;
 public class ConeHatScreen extends Screen {
     private final Screen parent;
 
-    private SliderWidget heightSlider;
-    private SliderWidget radiusSlider;
-    private SliderWidget yOffsetSlider;
-    private SliderWidget rotationSlider;
+    private ConfigSlider heightSlider;
+    private ConfigSlider radiusSlider;
+    private ConfigSlider yOffsetSlider;
+    private ConfigSlider rotationSlider;
     private ButtonWidget openFolderButton;
     private ButtonWidget doneButton;
 
     private static final int CONTROLS_WIDTH = 310;
     private static final int PREVIEW_WIDTH = 140;
     private static final int BOX_WIDTH = CONTROLS_WIDTH + PREVIEW_WIDTH;
-    private static final int BOX_HEIGHT = 246;
+    private static final int BOX_HEIGHT = 220;
     private static final int DRAG_BAR_HEIGHT = 18;
     private static final long FADE_DURATION_MS = 90;
     private static final int ROW_HEIGHT = 20;
     private static final int ROW_SPACING = 26;
-    private static final int FULL_W = 220;
+    private static final int SLIDER_W = 166;
+    private static final int INPUT_W = 50;
+    private static final int INPUT_GAP = 4;
+    private static final int FULL_W = SLIDER_W + INPUT_GAP + INPUT_W; // 220
+    private static final int DD_W = 148;
+    private static final int FOLDER_W = FULL_W - DD_W - INPUT_GAP; // 68
 
     private int panelX, panelY;
     private boolean dragging = false;
@@ -47,6 +54,10 @@ public class ConeHatScreen extends Screen {
     private static final int DROPDOWN_ROW_HEIGHT = 16;
     private static final int DROPDOWN_MAX_VISIBLE = 5;
 
+    // Text input state
+    private int editingSlider = -1; // 0=height, 1=radius, 2=yOffset, 3=rotation
+    private String editBuffer = "";
+
     public ConeHatScreen(Screen parent) {
         super(Text.literal("Cone Hat Config"));
         this.parent = parent;
@@ -59,6 +70,7 @@ public class ConeHatScreen extends Screen {
     protected void init() {
         openStartMs = Util.getMeasuringTimeMs();
         closing = false;
+        editingSlider = -1;
 
         panelX = (width - BOX_WIDTH) / 2;
         panelY = (height - BOX_HEIGHT) / 2;
@@ -68,58 +80,52 @@ public class ConeHatScreen extends Screen {
         int le = leftEdge();
 
         // Row 0: Height slider
-        heightSlider = new SliderWidget(le, rowY(0), FULL_W, ROW_HEIGHT,
+        heightSlider = new ConfigSlider(le, rowY(0), SLIDER_W, ROW_HEIGHT,
                 Text.literal(heightLabel()), heightToSlider(RenderConfig.getConeHatHeight())) {
             @Override protected void updateMessage() { setMessage(Text.literal(heightLabel())); }
             @Override protected void applyValue() {
                 RenderConfig.setConeHatHeight(sliderToHeight(this.value));
                 RenderConfig.save();
             }
-            @Override public void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {}
         };
 
         // Row 1: Radius slider
-        radiusSlider = new SliderWidget(le, rowY(1), FULL_W, ROW_HEIGHT,
+        radiusSlider = new ConfigSlider(le, rowY(1), SLIDER_W, ROW_HEIGHT,
                 Text.literal(radiusLabel()), radiusToSlider(RenderConfig.getConeHatRadius())) {
             @Override protected void updateMessage() { setMessage(Text.literal(radiusLabel())); }
             @Override protected void applyValue() {
                 RenderConfig.setConeHatRadius(sliderToRadius(this.value));
                 RenderConfig.save();
             }
-            @Override public void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {}
         };
 
         // Row 2: Y Offset slider
-        yOffsetSlider = new SliderWidget(le, rowY(2), FULL_W, ROW_HEIGHT,
+        yOffsetSlider = new ConfigSlider(le, rowY(2), SLIDER_W, ROW_HEIGHT,
                 Text.literal(yOffsetLabel()), yOffsetToSlider(RenderConfig.getConeHatYOffset())) {
             @Override protected void updateMessage() { setMessage(Text.literal(yOffsetLabel())); }
             @Override protected void applyValue() {
                 RenderConfig.setConeHatYOffset(sliderToYOffset(this.value));
                 RenderConfig.save();
             }
-            @Override public void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {}
         };
 
         // Row 3: Rotation slider
-        rotationSlider = new SliderWidget(le, rowY(3), FULL_W, ROW_HEIGHT,
+        rotationSlider = new ConfigSlider(le, rowY(3), SLIDER_W, ROW_HEIGHT,
                 Text.literal(rotationLabel()), rotationToSlider(RenderConfig.getConeHatRotation())) {
             @Override protected void updateMessage() { setMessage(Text.literal(rotationLabel())); }
             @Override protected void applyValue() {
                 RenderConfig.setConeHatRotation(sliderToRotation(this.value));
                 RenderConfig.save();
             }
-            @Override public void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {}
         };
 
-        // Row 4: Image selector dropdown (rendered manually)
-
-        // Row 5: Open folder
-        openFolderButton = ButtonWidget.builder(Text.literal("Open image folder"), b -> {
+        // Row 4: Image dropdown (DD_W) + Open folder (FOLDER_W) side by side
+        openFolderButton = ButtonWidget.builder(Text.literal("Open folder"), b -> {
             var dir = ConeHatManager.ensureDir();
             openPath(dir);
-        }).dimensions(le, rowY(5), FULL_W, ROW_HEIGHT).build();
+        }).dimensions(le + DD_W + INPUT_GAP, rowY(4), FOLDER_W, ROW_HEIGHT).build();
 
-        // Done — centered in controls area
+        // Done button centered in controls area
         doneButton = ButtonWidget.builder(Text.literal("Done"), b -> close())
                 .dimensions(panelX + (CONTROLS_WIDTH - 100) / 2, panelY + BOX_HEIGHT - 30, 100, ROW_HEIGHT)
                 .build();
@@ -163,29 +169,90 @@ public class ConeHatScreen extends Screen {
         return sel;
     }
 
+    // --- Text input editing ---
+
+    private String getSliderValueText(int index) {
+        return switch (index) {
+            case 0 -> String.format("%.2f", RenderConfig.getConeHatHeight());
+            case 1 -> String.format("%.2f", RenderConfig.getConeHatRadius());
+            case 2 -> String.format("%.2f", RenderConfig.getConeHatYOffset());
+            case 3 -> String.valueOf(Math.round(RenderConfig.getConeHatRotation()));
+            default -> "";
+        };
+    }
+
+    private void startEditing(int index) {
+        if (editingSlider >= 0 && editingSlider != index) {
+            tryApplyEdit();
+        }
+        editingSlider = index;
+        editBuffer = getSliderValueText(index);
+    }
+
+    private void tryApplyEdit() {
+        if (editingSlider < 0) return;
+        try {
+            float val = Float.parseFloat(editBuffer);
+            switch (editingSlider) {
+                case 0 -> {
+                    RenderConfig.setConeHatHeight(val);
+                    heightSlider.setSliderValue(heightToSlider(RenderConfig.getConeHatHeight()));
+                }
+                case 1 -> {
+                    RenderConfig.setConeHatRadius(val);
+                    radiusSlider.setSliderValue(radiusToSlider(RenderConfig.getConeHatRadius()));
+                }
+                case 2 -> {
+                    RenderConfig.setConeHatYOffset(val);
+                    yOffsetSlider.setSliderValue(yOffsetToSlider(RenderConfig.getConeHatYOffset()));
+                }
+                case 3 -> {
+                    RenderConfig.setConeHatRotation(val);
+                    rotationSlider.setSliderValue(rotationToSlider(RenderConfig.getConeHatRotation()));
+                }
+            }
+            RenderConfig.save();
+        } catch (NumberFormatException ignored) {}
+        editingSlider = -1;
+    }
+
+    // --- Lifecycle ---
+
     @Override
     public void close() {
         if (closing) return;
         closing = true;
         closeStartMs = Util.getMeasuringTimeMs();
+        if (editingSlider >= 0) tryApplyEdit();
         RenderConfig.save();
     }
 
     @Override public boolean shouldPause() { return false; }
     @Override public void renderBackground(DrawContext context, int mouseX, int mouseY, float delta) {}
 
+    // --- Input handling ---
+
     @Override
     public boolean mouseClicked(Click click, boolean ignoresInput) {
         double mx = click.x();
         double my = click.y();
 
-        // Handle dropdown clicks
+        // Finish editing on click outside the active input box
+        if (editingSlider >= 0 && click.button() == 0) {
+            int inputX = leftEdge() + SLIDER_W + INPUT_GAP;
+            int inputY = rowY(editingSlider);
+            if (!(mx >= inputX && mx <= inputX + INPUT_W && my >= inputY && my <= inputY + ROW_HEIGHT)) {
+                tryApplyEdit();
+            }
+        }
+
+        // Handle dropdown list clicks
         if (dropdownOpen && click.button() == 0) {
             int ddX = leftEdge();
             int ddTop = rowY(4) + ROW_HEIGHT + 2;
-            int ddWidth = FULL_W;
+            int ddWidth = DD_W;
             int visibleCount = Math.min(availableImages.size(), DROPDOWN_MAX_VISIBLE);
-            int ddHeight = visibleCount * DROPDOWN_ROW_HEIGHT;
+            int ddHeight = Math.max(DROPDOWN_ROW_HEIGHT, visibleCount * DROPDOWN_ROW_HEIGHT);
 
             if (mx >= ddX && mx <= ddX + ddWidth && my >= ddTop && my <= ddTop + ddHeight) {
                 int rowIndex = (int) ((my - ddTop) / DROPDOWN_ROW_HEIGHT) + dropdownScroll;
@@ -201,11 +268,23 @@ public class ConeHatScreen extends Screen {
             return true;
         }
 
+        // Handle input box clicks
+        if (click.button() == 0) {
+            int inputX = leftEdge() + SLIDER_W + INPUT_GAP;
+            for (int i = 0; i < 4; i++) {
+                int inputY = rowY(i);
+                if (mx >= inputX && mx <= inputX + INPUT_W && my >= inputY && my <= inputY + ROW_HEIGHT) {
+                    startEditing(i);
+                    return true;
+                }
+            }
+        }
+
         // Handle dropdown button click
         if (click.button() == 0) {
             int ddBtnX = leftEdge();
             int ddBtnY = rowY(4);
-            if (mx >= ddBtnX && mx <= ddBtnX + FULL_W && my >= ddBtnY && my <= ddBtnY + ROW_HEIGHT) {
+            if (mx >= ddBtnX && mx <= ddBtnX + DD_W && my >= ddBtnY && my <= ddBtnY + ROW_HEIGHT) {
                 refreshImageList();
                 dropdownOpen = !dropdownOpen;
                 return true;
@@ -213,7 +292,8 @@ public class ConeHatScreen extends Screen {
         }
 
         // Drag bar
-        if (click.button() == 0 && mx >= panelX && mx <= panelX + BOX_WIDTH && my >= panelY && my <= panelY + DRAG_BAR_HEIGHT) {
+        if (click.button() == 0 && mx >= panelX && mx <= panelX + BOX_WIDTH
+                && my >= panelY && my <= panelY + DRAG_BAR_HEIGHT) {
             dragging = true;
             dragStartMouseX = mx;
             dragStartMouseY = my;
@@ -226,11 +306,46 @@ public class ConeHatScreen extends Screen {
     }
 
     @Override
+    public boolean charTyped(CharInput input) {
+        if (editingSlider >= 0) {
+            int cp = input.codepoint();
+            char chr = (char) cp;
+            if (chr == '-' || chr == '.' || (chr >= '0' && chr <= '9')) {
+                editBuffer += chr;
+            }
+            return true;
+        }
+        return super.charTyped(input);
+    }
+
+    @Override
+    public boolean keyPressed(KeyInput input) {
+        if (editingSlider >= 0) {
+            if (input.isEnter()) {
+                tryApplyEdit();
+                return true;
+            }
+            if (input.isEscape()) {
+                editingSlider = -1;
+                return true;
+            }
+            if (input.key() == 259) { // Backspace
+                if (!editBuffer.isEmpty()) {
+                    editBuffer = editBuffer.substring(0, editBuffer.length() - 1);
+                }
+                return true;
+            }
+            return true; // consume other keys while editing
+        }
+        return super.keyPressed(input);
+    }
+
+    @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
         if (dropdownOpen && availableImages.size() > DROPDOWN_MAX_VISIBLE) {
             int ddX = leftEdge();
             int ddTop = rowY(4) + ROW_HEIGHT + 2;
-            int ddWidth = FULL_W;
+            int ddWidth = DD_W;
             int ddHeight = DROPDOWN_MAX_VISIBLE * DROPDOWN_ROW_HEIGHT;
             if (mouseX >= ddX && mouseX <= ddX + ddWidth && mouseY >= ddTop && mouseY <= ddTop + ddHeight) {
                 dropdownScroll -= (int) verticalAmount;
@@ -271,9 +386,11 @@ public class ConeHatScreen extends Screen {
         radiusSlider.setX(le);   radiusSlider.setY(rowY(1));
         yOffsetSlider.setX(le);  yOffsetSlider.setY(rowY(2));
         rotationSlider.setX(le); rotationSlider.setY(rowY(3));
-        openFolderButton.setX(le); openFolderButton.setY(rowY(5));
+        openFolderButton.setX(le + DD_W + INPUT_GAP); openFolderButton.setY(rowY(4));
         doneButton.setX(panelX + (CONTROLS_WIDTH - 100) / 2); doneButton.setY(panelY + BOX_HEIGHT - 30);
     }
+
+    // --- Rendering ---
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
@@ -313,20 +430,20 @@ public class ConeHatScreen extends Screen {
                 panelX + (CONTROLS_WIDTH - titleWidth) / 2, panelY + 6,
                 applyAlpha(chromaColor(0f), guiAlpha));
 
-        // Sliders
-        styleSlider(context, heightSlider, guiAlpha, mouseX, mouseY,
+        // Sliders + input boxes
+        renderSliderRow(context, 0, heightSlider, guiAlpha, mouseX, mouseY,
                 (float) heightToSlider(RenderConfig.getConeHatHeight()));
-        styleSlider(context, radiusSlider, guiAlpha, mouseX, mouseY,
+        renderSliderRow(context, 1, radiusSlider, guiAlpha, mouseX, mouseY,
                 (float) radiusToSlider(RenderConfig.getConeHatRadius()));
-        styleSlider(context, yOffsetSlider, guiAlpha, mouseX, mouseY,
+        renderSliderRow(context, 2, yOffsetSlider, guiAlpha, mouseX, mouseY,
                 (float) yOffsetToSlider(RenderConfig.getConeHatYOffset()));
-        styleSlider(context, rotationSlider, guiAlpha, mouseX, mouseY,
+        renderSliderRow(context, 3, rotationSlider, guiAlpha, mouseX, mouseY,
                 (float) rotationToSlider(RenderConfig.getConeHatRotation()));
 
-        // Image selector dropdown
-        renderImageDropdown(context, mouseX, mouseY, guiAlpha);
-
+        // Row 4: dropdown button + open folder button (side by side)
+        renderDropdownButton(context, mouseX, mouseY, guiAlpha);
         styleButton(context, openFolderButton, guiAlpha, mouseX, mouseY);
+
         styleButton(context, doneButton, guiAlpha, mouseX, mouseY);
 
         // Hint
@@ -343,9 +460,14 @@ public class ConeHatScreen extends Screen {
                 divX + (PREVIEW_WIDTH - plW) / 2, panelY + 6,
                 applyAlpha(chromaColor(0f), guiAlpha));
 
+        // Dropdown expanded list rendered LAST so it draws on top of everything
+        if (dropdownOpen) {
+            renderDropdownList(context, mouseX, mouseY, guiAlpha);
+        }
+
         matrices.popMatrix();
 
-        // Player preview — rendered outside the scale transform so entity rendering works correctly
+        // Player preview — rendered outside the scale transform
         if (client != null && client.player != null && guiAlpha > 0.5f) {
             int prevX1 = panelX + CONTROLS_WIDTH + 4;
             int prevX2 = panelX + BOX_WIDTH - 4;
@@ -358,10 +480,64 @@ public class ConeHatScreen extends Screen {
         }
     }
 
-    private void renderImageDropdown(DrawContext context, int mouseX, int mouseY, float guiAlpha) {
+    private void renderSliderRow(DrawContext context, int index, ConfigSlider slider,
+                                  float alpha, int mouseX, int mouseY, float pct) {
+        // Slider portion
+        styleSlider(context, slider, alpha, mouseX, mouseY, pct);
+
+        // Input box to the right
+        int inputX = leftEdge() + SLIDER_W + INPUT_GAP;
+        int inputY = rowY(index);
+        boolean editing = editingSlider == index;
+        boolean hover = mouseX >= inputX && mouseX <= inputX + INPUT_W
+                && mouseY >= inputY && mouseY <= inputY + ROW_HEIGHT;
+
+        int bgColor = editing ? 0xFF222222 : (hover ? 0xFF444444 : 0xFF333333);
+        context.fill(inputX, inputY, inputX + INPUT_W, inputY + ROW_HEIGHT, applyAlpha(bgColor, alpha));
+
+        if (editing) {
+            InventoryHudRenderer.drawChromaBorder(context, inputX - 1, inputY - 1,
+                    inputX + INPUT_W + 1, inputY + ROW_HEIGHT + 1, alpha);
+        } else {
+            // Subtle 1px border
+            context.fill(inputX, inputY, inputX + INPUT_W, inputY + 1, applyAlpha(0xFF555555, alpha));
+            context.fill(inputX, inputY + ROW_HEIGHT - 1, inputX + INPUT_W, inputY + ROW_HEIGHT, applyAlpha(0xFF555555, alpha));
+            context.fill(inputX, inputY, inputX + 1, inputY + ROW_HEIGHT, applyAlpha(0xFF555555, alpha));
+            context.fill(inputX + INPUT_W - 1, inputY, inputX + INPUT_W, inputY + ROW_HEIGHT, applyAlpha(0xFF555555, alpha));
+        }
+
+        String displayText = editing ? editBuffer : getSliderValueText(index);
+        // Truncate from the left if too wide
+        while (textRenderer.getWidth(displayText) > INPUT_W - 6 && displayText.length() > 1) {
+            displayText = displayText.substring(1);
+        }
+
+        int textY = inputY + (ROW_HEIGHT - textRenderer.fontHeight) / 2;
+
+        if (editing) {
+            int textColor = applyAlpha(0xFFFFFFFF, alpha);
+            int tw = textRenderer.getWidth(displayText);
+            int textXPos = inputX + INPUT_W - 4 - tw;
+            context.drawTextWithShadow(textRenderer, displayText, textXPos, textY, textColor);
+
+            // Blinking cursor
+            if ((System.currentTimeMillis() / 500) % 2 == 0) {
+                int cursorX = textXPos + tw;
+                context.fill(cursorX, inputY + 3, cursorX + 1, inputY + ROW_HEIGHT - 3,
+                        applyAlpha(0xFFFFFFFF, alpha));
+            }
+        } else {
+            int textColor = applyAlpha(0xFFCCCCCC, alpha);
+            int tw = textRenderer.getWidth(displayText);
+            context.drawTextWithShadow(textRenderer, displayText,
+                    inputX + (INPUT_W - tw) / 2, textY, textColor);
+        }
+    }
+
+    private void renderDropdownButton(DrawContext context, int mouseX, int mouseY, float guiAlpha) {
         int ddX = leftEdge();
         int ddY = rowY(4);
-        int ddW = FULL_W;
+        int ddW = DD_W;
         int ddH = ROW_HEIGHT;
 
         boolean barHover = mouseX >= ddX && mouseX <= ddX + ddW && mouseY >= ddY && mouseY <= ddY + ddH;
@@ -379,14 +555,21 @@ public class ConeHatScreen extends Screen {
         int chroma = applyAlpha(chromaColor((System.currentTimeMillis() % 4000) / 4000f), guiAlpha);
         context.drawTextWithShadow(textRenderer, display,
                 ddX + (ddW - textW) / 2, ddY + (ddH - textRenderer.fontHeight) / 2, chroma);
+    }
 
-        if (dropdownOpen && !availableImages.isEmpty()) {
-            int listTop = ddY + ddH + 2;
+    private void renderDropdownList(DrawContext context, int mouseX, int mouseY, float guiAlpha) {
+        int ddX = leftEdge();
+        int ddW = DD_W;
+        int listTop = rowY(4) + ROW_HEIGHT + 2;
+        int chroma = applyAlpha(chromaColor((System.currentTimeMillis() % 4000) / 4000f), guiAlpha);
+
+        if (!availableImages.isEmpty()) {
             int visibleCount = Math.min(availableImages.size(), DROPDOWN_MAX_VISIBLE);
             int listHeight = visibleCount * DROPDOWN_ROW_HEIGHT;
 
-            context.fill(ddX, listTop, ddX + ddW, listTop + listHeight, applyAlpha(0xDD000000, guiAlpha));
-            InventoryHudRenderer.drawChromaBorder(context, ddX - 1, listTop - 1, ddX + ddW + 1, listTop + listHeight + 1, guiAlpha);
+            context.fill(ddX, listTop, ddX + ddW, listTop + listHeight, applyAlpha(0xEE000000, guiAlpha));
+            InventoryHudRenderer.drawChromaBorder(context, ddX - 1, listTop - 1,
+                    ddX + ddW + 1, listTop + listHeight + 1, guiAlpha);
 
             String selected = RenderConfig.getSelectedConeImage();
             for (int i = 0; i < visibleCount; i++) {
@@ -394,13 +577,16 @@ public class ConeHatScreen extends Screen {
                 if (idx >= availableImages.size()) break;
                 String name = availableImages.get(idx);
                 int ry = listTop + i * DROPDOWN_ROW_HEIGHT;
-                boolean rowHover = mouseX >= ddX && mouseX <= ddX + ddW && mouseY >= ry && mouseY <= ry + DROPDOWN_ROW_HEIGHT;
+                boolean rowHover = mouseX >= ddX && mouseX <= ddX + ddW
+                        && mouseY >= ry && mouseY <= ry + DROPDOWN_ROW_HEIGHT;
                 boolean isSel = name.equals(selected);
 
                 if (rowHover) {
-                    context.fill(ddX + 1, ry, ddX + ddW - 1, ry + DROPDOWN_ROW_HEIGHT, applyAlpha(0xFF555555, guiAlpha));
+                    context.fill(ddX + 1, ry, ddX + ddW - 1, ry + DROPDOWN_ROW_HEIGHT,
+                            applyAlpha(0xFF555555, guiAlpha));
                 } else if (isSel) {
-                    context.fill(ddX + 1, ry, ddX + ddW - 1, ry + DROPDOWN_ROW_HEIGHT, applyAlpha(0xFF3A3A3A, guiAlpha));
+                    context.fill(ddX + 1, ry, ddX + ddW - 1, ry + DROPDOWN_ROW_HEIGHT,
+                            applyAlpha(0xFF3A3A3A, guiAlpha));
                 }
 
                 String truncName = name;
@@ -414,13 +600,16 @@ public class ConeHatScreen extends Screen {
 
             if (availableImages.size() > DROPDOWN_MAX_VISIBLE) {
                 int scrollBarH = Math.max(4, (int) ((float) visibleCount / availableImages.size() * listHeight));
-                int scrollBarY = listTop + (int) ((float) dropdownScroll / (availableImages.size() - visibleCount) * (listHeight - scrollBarH));
-                context.fill(ddX + ddW - 3, scrollBarY, ddX + ddW - 1, scrollBarY + scrollBarH, applyAlpha(0xFF888888, guiAlpha));
+                int scrollBarY = listTop + (int) ((float) dropdownScroll
+                        / (availableImages.size() - visibleCount) * (listHeight - scrollBarH));
+                context.fill(ddX + ddW - 3, scrollBarY, ddX + ddW - 1, scrollBarY + scrollBarH,
+                        applyAlpha(0xFF888888, guiAlpha));
             }
-        } else if (dropdownOpen && availableImages.isEmpty()) {
-            int listTop = ddY + ddH + 2;
-            context.fill(ddX, listTop, ddX + ddW, listTop + DROPDOWN_ROW_HEIGHT, applyAlpha(0xDD000000, guiAlpha));
-            InventoryHudRenderer.drawChromaBorder(context, ddX - 1, listTop - 1, ddX + ddW + 1, listTop + DROPDOWN_ROW_HEIGHT + 1, guiAlpha);
+        } else {
+            context.fill(ddX, listTop, ddX + ddW, listTop + DROPDOWN_ROW_HEIGHT,
+                    applyAlpha(0xEE000000, guiAlpha));
+            InventoryHudRenderer.drawChromaBorder(context, ddX - 1, listTop - 1,
+                    ddX + ddW + 1, listTop + DROPDOWN_ROW_HEIGHT + 1, guiAlpha);
             String empty = "No images found";
             int ew = textRenderer.getWidth(empty);
             context.drawTextWithShadow(textRenderer, empty,
@@ -483,5 +672,20 @@ public class ConeHatScreen extends Screen {
             pb.redirectError(ProcessBuilder.Redirect.to(devNull));
             pb.start();
         } catch (Exception ignored) {}
+    }
+
+    /** Slider subclass that exposes value setter for text input sync. */
+    private abstract static class ConfigSlider extends SliderWidget {
+        ConfigSlider(int x, int y, int w, int h, Text text, double value) {
+            super(x, y, w, h, text, value);
+        }
+
+        void setSliderValue(double v) {
+            this.value = Math.max(0, Math.min(1, v));
+            updateMessage();
+        }
+
+        @Override
+        public void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {}
     }
 }
