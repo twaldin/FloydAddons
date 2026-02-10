@@ -8,16 +8,15 @@ import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.render.BufferBuilderStorage;
+import net.minecraft.client.render.LayeringTransform;
 import net.minecraft.client.render.RenderLayer;
-import net.minecraft.client.render.RenderPhase;
+import net.minecraft.client.render.RenderSetup;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Vec3d;
-
-import java.util.OptionalDouble;
 
 /**
  * Renders a chroma tracer line from the crosshair to the stalked player.
@@ -32,15 +31,13 @@ public final class StalkRenderer {
             .withDepthWrite(false)
             .build();
 
-    // Custom render layer: xray lines with configurable width
+    // Custom render layer: xray lines
     private static final RenderLayer TRACER_LAYER = RenderLayer.of(
             "floydaddons_tracer",
-            1536,
-            XRAY_LINES_PIPELINE,
-            RenderLayer.MultiPhaseParameters.builder()
-                    .lineWidth(new RenderPhase.LineWidth(OptionalDouble.of(3.0)))
-                    .layering(RenderPhase.NO_LAYERING)
-                    .build(false)
+            RenderSetup.builder(XRAY_LINES_PIPELINE)
+                    .expectedBufferSize(1536)
+                    .layeringTransform(LayeringTransform.NO_LAYERING)
+                    .build()
     );
 
     private StalkRenderer() {}
