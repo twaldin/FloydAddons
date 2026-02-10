@@ -82,6 +82,11 @@ public final class FloydAddonsConfig {
         data.inventoryHudY = RenderConfig.getInventoryHudY();
         data.inventoryHudScale = RenderConfig.getInventoryHudScale();
         data.floydHatEnabled = RenderConfig.isFloydHatEnabled();
+        data.coneHatHeight = RenderConfig.getConeHatHeight();
+        data.coneHatRadius = RenderConfig.getConeHatRadius();
+        data.coneHatYOffset = RenderConfig.getConeHatYOffset();
+        data.coneHatRotation = RenderConfig.getConeHatRotation();
+        data.selectedConeImage = RenderConfig.getSelectedConeImage();
         data.customScoreboardEnabled = RenderConfig.isCustomScoreboardEnabled();
         data.customScoreboardX = RenderConfig.getCustomScoreboardX();
         data.customScoreboardY = RenderConfig.getCustomScoreboardY();
@@ -165,6 +170,11 @@ public final class FloydAddonsConfig {
         RenderConfig.setInventoryHudY(data.inventoryHudY);
         RenderConfig.setInventoryHudScale(data.inventoryHudScale);
         RenderConfig.setFloydHatEnabled(data.floydHatEnabled);
+        if (data.coneHatHeight > 0) RenderConfig.setConeHatHeight(data.coneHatHeight);
+        if (data.coneHatRadius > 0) RenderConfig.setConeHatRadius(data.coneHatRadius);
+        if (data.coneHatYOffset != 0) RenderConfig.setConeHatYOffset(data.coneHatYOffset);
+        RenderConfig.setConeHatRotation(data.coneHatRotation);
+        if (data.selectedConeImage != null) RenderConfig.setSelectedConeImage(data.selectedConeImage);
         RenderConfig.setCustomScoreboardEnabled(data.customScoreboardEnabled);
         RenderConfig.setCustomScoreboardX(data.customScoreboardX);
         RenderConfig.setCustomScoreboardY(data.customScoreboardY);
@@ -187,6 +197,11 @@ public final class FloydAddonsConfig {
         int inventoryHudY;
         float inventoryHudScale;
         boolean floydHatEnabled;
+        float coneHatHeight;
+        float coneHatRadius;
+        float coneHatYOffset;
+        float coneHatRotation;
+        String selectedConeImage;
         boolean customScoreboardEnabled;
         int customScoreboardX;
         int customScoreboardY;

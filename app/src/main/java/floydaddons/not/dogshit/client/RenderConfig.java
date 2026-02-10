@@ -16,6 +16,11 @@ public final class RenderConfig {
     private static int inventoryHudY = 12;
     private static float inventoryHudScale = 1.1f;
     private static boolean floydHatEnabled = false;
+    private static float coneHatHeight = 0.45f;
+    private static float coneHatRadius = 0.25f;
+    private static float coneHatYOffset = -0.5f;
+    private static float coneHatRotation = 0.0f;
+    private static String selectedConeImage = "";
     private static boolean customScoreboardEnabled = false;
     private static int customScoreboardX = -1;
     private static int customScoreboardY = -1;
@@ -39,6 +44,21 @@ public final class RenderConfig {
 
     public static boolean isFloydHatEnabled() { return floydHatEnabled; }
     public static void setFloydHatEnabled(boolean v) { floydHatEnabled = v; }
+
+    public static float getConeHatHeight() { return coneHatHeight; }
+    public static void setConeHatHeight(float v) { coneHatHeight = Math.max(0.1f, Math.min(1.5f, v)); }
+
+    public static float getConeHatRadius() { return coneHatRadius; }
+    public static void setConeHatRadius(float v) { coneHatRadius = Math.max(0.05f, Math.min(0.8f, v)); }
+
+    public static float getConeHatYOffset() { return coneHatYOffset; }
+    public static void setConeHatYOffset(float v) { coneHatYOffset = Math.max(-1.5f, Math.min(0.5f, v)); }
+
+    public static float getConeHatRotation() { return coneHatRotation; }
+    public static void setConeHatRotation(float v) { coneHatRotation = ((v % 360f) + 360f) % 360f; }
+
+    public static String getSelectedConeImage() { return selectedConeImage; }
+    public static void setSelectedConeImage(String v) { selectedConeImage = v != null ? v : ""; }
 
     public static boolean isCustomScoreboardEnabled() { return customScoreboardEnabled; }
     public static void setCustomScoreboardEnabled(boolean v) { customScoreboardEnabled = v; }
