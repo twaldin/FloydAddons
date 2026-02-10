@@ -14,6 +14,7 @@ public class FloydAddonsClient implements ClientModInitializer {
     public static final String MOD_ID = "floydaddons";
 
     private KeyBinding openGuiKey;
+    private KeyBinding xrayToggleKey;
     private static final KeyBinding.Category KEY_CATEGORY =
             KeyBinding.Category.create(Identifier.of(MOD_ID, "category"));
 
@@ -22,11 +23,20 @@ public class FloydAddonsClient implements ClientModInitializer {
         FloydAddonsConfig.load();
         InventoryHudRenderer.register();
         ScoreboardHudRenderer.register();
+        StalkRenderer.register();
+        FloydAddonsCommand.register();
 
         openGuiKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.floydaddons.open_gui",
                 InputUtil.Type.KEYSYM,
                 GLFW.GLFW_KEY_N,
+                KEY_CATEGORY
+        ));
+
+        xrayToggleKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+                "key.floydaddons.toggle_xray",
+                InputUtil.Type.KEYSYM,
+                GLFW.GLFW_KEY_X,
                 KEY_CATEGORY
         ));
 
@@ -37,6 +47,9 @@ public class FloydAddonsClient implements ClientModInitializer {
             }
             while (openGuiKey.wasPressed()) {
                 client.setScreen(new FloydAddonsScreen(Text.literal("FloydAddons")));
+            }
+            while (xrayToggleKey.wasPressed()) {
+                RenderConfig.toggleXray();
             }
         });
 

@@ -3,6 +3,8 @@ name: Build and Release
 on:
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -65,6 +67,13 @@ jobs:
 
       - name: Build for 1.21.10
         run: ./gradlew clean build --no-daemon -Pmod_version=${{ steps.version.outputs.version }}
+
+      - name: Upload build artifact
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: floydaddons-${{ steps.version.outputs.version }}-mc1.21.10
+          path: app/build/libs/floydaddons-${{ steps.version.outputs.version }}.jar
 
       - name: Create GitHub Release
         if: github.event_name == 'push'
