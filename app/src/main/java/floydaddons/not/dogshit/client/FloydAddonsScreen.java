@@ -48,6 +48,10 @@ public class FloydAddonsScreen extends Screen {
     private int styleBtnY;
     private int hudBtnX;
     private int hudBtnY;
+    private int clickGuiBtnX;
+    private int clickGuiBtnY;
+    private static final int CLICKGUI_BTN_W = 74;
+    private static final int CLICKGUI_BTN_H = 18;
 
     private int scaleX(int value) { return Math.round(value * SCALE_X); }
     private int scaleY(int value) { return Math.round(value * SCALE_Y); }
@@ -121,6 +125,11 @@ public class FloydAddonsScreen extends Screen {
         hudBtnX = left + 6;
         hudBtnY = top + 4;
         drawHudButton(context, guiAlpha, mouseX, mouseY);
+
+        // ClickGUI button below HUD button
+        clickGuiBtnX = left + 6;
+        clickGuiBtnY = top + 4 + STYLE_BTN_H + 4;
+        drawClickGuiButton(context, guiAlpha, mouseX, mouseY);
 
         // Title scaled up 75% with chroma gradient right-to-left
         float titleScale = 1.75f;
@@ -268,6 +277,14 @@ public class FloydAddonsScreen extends Screen {
             }
         }
 
+        // ClickGUI button
+        if (mx >= clickGuiBtnX && mx <= clickGuiBtnX + CLICKGUI_BTN_W && my >= clickGuiBtnY && my <= clickGuiBtnY + CLICKGUI_BTN_H) {
+            if (client != null) {
+                client.setScreen(new ClickGuiScreen());
+                return true;
+            }
+        }
+
         // start dragging when clicking the top bar
         if (mx >= panelX && mx <= panelX + PANEL_WIDTH && my >= panelY && my <= panelY + DRAG_BAR_HEIGHT) {
             dragging = true;
@@ -407,6 +424,22 @@ public class FloydAddonsScreen extends Screen {
         int tw = textRenderer.getWidth(label);
         int tx = bx + (STYLE_BTN_W - tw) / 2;
         int ty = by + (STYLE_BTN_H - textRenderer.fontHeight) / 2;
+        int color = applyAlpha(chromaColorSynced(0f), alpha);
+        context.drawTextWithShadow(textRenderer, label, tx, ty, color);
+    }
+
+    private void drawClickGuiButton(DrawContext context, float alpha, int mouseX, int mouseY) {
+        int bx = clickGuiBtnX;
+        int by = clickGuiBtnY;
+        boolean hover = mouseX >= bx && mouseX <= bx + CLICKGUI_BTN_W && mouseY >= by && mouseY <= by + CLICKGUI_BTN_H;
+        int fill = applyAlpha(hover ? 0xFF666666 : 0xFF4A4A4A, alpha);
+        context.fill(bx, by, bx + CLICKGUI_BTN_W, by + CLICKGUI_BTN_H, fill);
+        drawChromaBorderSyncedForced(context, bx - 1, by - 1, bx + CLICKGUI_BTN_W + 1, by + CLICKGUI_BTN_H + 1, alpha);
+
+        String label = "ClickGUI";
+        int tw = textRenderer.getWidth(label);
+        int tx = bx + (CLICKGUI_BTN_W - tw) / 2;
+        int ty = by + (CLICKGUI_BTN_H - textRenderer.fontHeight) / 2;
         int color = applyAlpha(chromaColorSynced(0f), alpha);
         context.drawTextWithShadow(textRenderer, label, tx, ty, color);
     }

@@ -16,7 +16,20 @@
     "XraySodiumFluidAlphaMixin",
     "XrayChunkOcclusionMixin",
     "XrayLightmapMixin",
-    "TitleScreenBackgroundMixin"
+    "TitleScreenBackgroundMixin",
+    "HiderOverlayMixin",
+    "HiderFogMixin",
+    "HiderGameRendererMixin",
+    "HiderInGameHudMixin",
+    "HiderEntityRendererMixin",
+    "HiderFallingBlockMixin",
+    "HiderLightningMixin",
+    "HiderParticleMixin",
+    "HiderPlayerListMixin",
+    "HiderNametagMixin",
+    "HiderMiscMixin",
+    "HiderArrowMixin",
+    "HiderFireEntityMixin"
   ],
   "injectors": {
     "defaultRequire": 1

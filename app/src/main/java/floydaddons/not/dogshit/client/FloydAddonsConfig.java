@@ -62,6 +62,8 @@ public final class FloydAddonsConfig {
                     loadNickHider(data);
                     loadSkin(data);
                     loadRender(data);
+                    loadHiders(data);
+                    ClickGuiConfig.loadFromData(data.clickGuiPanels);
                 }
             } catch (IOException ignored) {
             }
@@ -116,6 +118,32 @@ public final class FloydAddonsConfig {
         data.defaultEspChromaEnabled = RenderConfig.isDefaultEspChromaEnabled();
         data.stalkTracerColor = RenderConfig.getStalkTracerColor();
         data.stalkTracerChromaEnabled = RenderConfig.isStalkTracerChromaEnabled();
+        // Hiders
+        data.fullbright = HidersConfig.isFullbrightEnabled();
+        data.hiderDisableFog = HidersConfig.isDisableFogEnabled();
+        data.hiderDisableBlindness = HidersConfig.isDisableBlindnessEnabled();
+        data.hiderNoHurtCamera = HidersConfig.isNoHurtCameraEnabled();
+        data.hiderRemoveFireOverlay = HidersConfig.isRemoveFireOverlayEnabled();
+        data.hiderRemoveWaterOverlay = HidersConfig.isRemoveWaterOverlayEnabled();
+        data.hiderRemoveSuffocationOverlay = HidersConfig.isRemoveSuffocationOverlayEnabled();
+        data.hiderDisableVignette = HidersConfig.isDisableVignetteEnabled();
+        data.hiderDisableHungerBar = HidersConfig.isDisableHungerBarEnabled();
+        data.hiderHidePotionEffects = HidersConfig.isHidePotionEffectsEnabled();
+        data.hiderThirdPersonCrosshair = HidersConfig.isThirdPersonCrosshairEnabled();
+        data.hiderHideEntityFire = HidersConfig.isHideEntityFireEnabled();
+        data.hiderDisableAttachedArrows = HidersConfig.isDisableAttachedArrowsEnabled();
+        data.hiderNoDeathAnimation = HidersConfig.isNoDeathAnimationEnabled();
+        data.hiderRemoveFallingBlocks = HidersConfig.isRemoveFallingBlocksEnabled();
+        data.hiderRemoveLightning = HidersConfig.isRemoveLightningEnabled();
+        data.hiderRemoveBlockBreakParticles = HidersConfig.isRemoveBlockBreakParticlesEnabled();
+        data.hiderRemoveExplosionParticles = HidersConfig.isRemoveExplosionParticlesEnabled();
+        data.hiderRemoveTabPing = HidersConfig.isRemoveTabPingEnabled();
+        data.hiderDisableNametagBackground = HidersConfig.isDisableNametagBackgroundEnabled();
+        data.hiderRemoveGlowEffect = HidersConfig.isRemoveGlowEffectEnabled();
+        data.hiderHideGroundedArrows = HidersConfig.isHideGroundedArrowsEnabled();
+        data.hiderCancelIncorrectSound = HidersConfig.isCancelIncorrectSoundEnabled();
+        // ClickGUI panel positions
+        data.clickGuiPanels = ClickGuiConfig.toData();
 
         try {
             try (Writer w = Files.newBufferedWriter(CONFIG_PATH)) {
@@ -237,6 +265,32 @@ public final class FloydAddonsConfig {
         if (data.selectedSkin != null) SkinConfig.setSelectedSkin(data.selectedSkin);
     }
 
+    private static void loadHiders(Data data) {
+        HidersConfig.setFullbrightEnabled(data.fullbright);
+        HidersConfig.setDisableFogEnabled(data.hiderDisableFog);
+        HidersConfig.setDisableBlindnessEnabled(data.hiderDisableBlindness);
+        HidersConfig.setNoHurtCameraEnabled(data.hiderNoHurtCamera);
+        HidersConfig.setRemoveFireOverlayEnabled(data.hiderRemoveFireOverlay);
+        HidersConfig.setRemoveWaterOverlayEnabled(data.hiderRemoveWaterOverlay);
+        HidersConfig.setRemoveSuffocationOverlayEnabled(data.hiderRemoveSuffocationOverlay);
+        HidersConfig.setDisableVignetteEnabled(data.hiderDisableVignette);
+        HidersConfig.setDisableHungerBarEnabled(data.hiderDisableHungerBar);
+        HidersConfig.setHidePotionEffectsEnabled(data.hiderHidePotionEffects);
+        HidersConfig.setThirdPersonCrosshairEnabled(data.hiderThirdPersonCrosshair);
+        HidersConfig.setHideEntityFireEnabled(data.hiderHideEntityFire);
+        HidersConfig.setDisableAttachedArrowsEnabled(data.hiderDisableAttachedArrows);
+        HidersConfig.setNoDeathAnimationEnabled(data.hiderNoDeathAnimation);
+        HidersConfig.setRemoveFallingBlocksEnabled(data.hiderRemoveFallingBlocks);
+        HidersConfig.setRemoveLightningEnabled(data.hiderRemoveLightning);
+        HidersConfig.setRemoveBlockBreakParticlesEnabled(data.hiderRemoveBlockBreakParticles);
+        HidersConfig.setRemoveExplosionParticlesEnabled(data.hiderRemoveExplosionParticles);
+        HidersConfig.setRemoveTabPingEnabled(data.hiderRemoveTabPing);
+        HidersConfig.setDisableNametagBackgroundEnabled(data.hiderDisableNametagBackground);
+        HidersConfig.setRemoveGlowEffectEnabled(data.hiderRemoveGlowEffect);
+        HidersConfig.setHideGroundedArrowsEnabled(data.hiderHideGroundedArrows);
+        HidersConfig.setCancelIncorrectSoundEnabled(data.hiderCancelIncorrectSound);
+    }
+
     private static void loadRender(Data data) {
         RenderConfig.setInventoryHudEnabled(data.inventoryHudEnabled);
         RenderConfig.setInventoryHudX(data.inventoryHudX);
@@ -314,5 +368,31 @@ public final class FloydAddonsConfig {
         boolean defaultEspChromaEnabled = true;
         int stalkTracerColor = 0xFFFFFFFF;
         boolean stalkTracerChromaEnabled = true;
+        // Hiders
+        boolean fullbright;
+        boolean hiderDisableFog;
+        boolean hiderDisableBlindness;
+        boolean hiderNoHurtCamera;
+        boolean hiderRemoveFireOverlay;
+        boolean hiderRemoveWaterOverlay;
+        boolean hiderRemoveSuffocationOverlay;
+        boolean hiderDisableVignette;
+        boolean hiderDisableHungerBar;
+        boolean hiderHidePotionEffects;
+        boolean hiderThirdPersonCrosshair;
+        boolean hiderHideEntityFire;
+        boolean hiderDisableAttachedArrows;
+        boolean hiderNoDeathAnimation;
+        boolean hiderRemoveFallingBlocks;
+        boolean hiderRemoveLightning;
+        boolean hiderRemoveBlockBreakParticles;
+        boolean hiderRemoveExplosionParticles;
+        boolean hiderRemoveTabPing;
+        boolean hiderDisableNametagBackground;
+        boolean hiderRemoveGlowEffect;
+        boolean hiderHideGroundedArrows;
+        boolean hiderCancelIncorrectSound;
+        // ClickGUI
+        Map<String, int[]> clickGuiPanels;
     }
 }

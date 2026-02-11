@@ -16,6 +16,7 @@ public class FloydAddonsClient implements ClientModInitializer {
     public static final String MOD_ID = "floydaddons";
 
     private KeyBinding openGuiKey;
+    private KeyBinding clickGuiKey;
     private KeyBinding xrayToggleKey;
     private KeyBinding mobEspToggleKey;
     private static final KeyBinding.Category KEY_CATEGORY =
@@ -35,6 +36,13 @@ public class FloydAddonsClient implements ClientModInitializer {
                 "key.floydaddons.open_gui",
                 InputUtil.Type.KEYSYM,
                 GLFW.GLFW_KEY_N,
+                KEY_CATEGORY
+        ));
+
+        clickGuiKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+                "key.floydaddons.click_gui",
+                InputUtil.Type.KEYSYM,
+                GLFW.GLFW_KEY_RIGHT_SHIFT,
                 KEY_CATEGORY
         ));
 
@@ -63,6 +71,9 @@ public class FloydAddonsClient implements ClientModInitializer {
             }
             while (openGuiKey.wasPressed()) {
                 client.setScreen(new FloydAddonsScreen(Text.literal("FloydAddons")));
+            }
+            while (clickGuiKey.wasPressed()) {
+                client.setScreen(new ClickGuiScreen());
             }
             while (xrayToggleKey.wasPressed()) {
                 RenderConfig.toggleXray();
