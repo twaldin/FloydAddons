@@ -68,15 +68,8 @@ public class NickHiderScreen extends Screen {
             NickHiderConfig.save();
         }).dimensions(cx, panelY + 40, 220, 20).build();
 
-        editNamesButton = ButtonWidget.builder(Text.literal("Edit Names File"), button -> {
-            try {
-                java.nio.file.Path path = NickHiderConfig.getNamesConfigPath();
-                if (!java.nio.file.Files.exists(path)) {
-                    NickHiderConfig.loadNameMappings(); // creates template
-                }
-                openFileInEditor(path);
-            } catch (Exception ignored) {
-            }
+        editNamesButton = ButtonWidget.builder(Text.literal("Edit Names"), button -> {
+            if (client != null) client.setScreen(new NameMappingsEditorScreen(this));
         }).dimensions(cx, panelY + 68, 107, 20).build();
 
         reloadNamesButton = ButtonWidget.builder(Text.literal("Reload Names"), button -> {
@@ -139,11 +132,11 @@ public class NickHiderScreen extends Screen {
         context.fill(left, top, right, bottom, baseColor);
 
         // Chroma outline similar to main screen
-        drawChromaBorder(context, left - 1, top - 1, right + 1, bottom + 1, guiAlpha);
+        InventoryHudRenderer.drawChromaBorder(context, left - 1, top - 1, right + 1, bottom + 1, guiAlpha);
 
         // Dynamic chroma text and outlines for controls
-        int chromaFast = applyAlpha(chromaColor((System.currentTimeMillis() % 4000) / 4000f), guiAlpha);
-        int chromaSlow = applyAlpha(chromaColor(((System.currentTimeMillis() % 8000) / 8000f)), guiAlpha);
+        int chromaFast = applyAlpha(resolveTextColor((System.currentTimeMillis() % 4000) / 4000f), guiAlpha);
+        int chromaSlow = applyAlpha(resolveTextColor(((System.currentTimeMillis() % 8000) / 8000f)), guiAlpha);
 
         // Nick field custom background (solid black) + chroma outline, centered text
         int fieldFill = 0xFF000000;
@@ -157,7 +150,7 @@ public class NickHiderScreen extends Screen {
         styleButtonFlat(context, reloadNamesButton, chromaSlow, guiAlpha, mouseX, mouseY);
 
         // Hint
-        String hint = "Edit name-mappings.json to rename specific players";
+        String hint = "Use 'Edit Names' to manage player nicknames";
         int hintColor = applyAlpha(0xFF888888, guiAlpha);
         int hintX = panelX + (BOX_WIDTH - textRenderer.getWidth(hint)) / 2;
         context.drawTextWithShadow(textRenderer, hint, hintX, panelY + 92, hintColor);
@@ -244,7 +237,7 @@ public class NickHiderScreen extends Screen {
 
     private void renderTextField(DrawContext context, TextFieldWidget field, int fillColor, float guiAlpha, int mouseX, int mouseY, float delta) {
         context.fill(field.getX(), field.getY(), field.getX() + field.getWidth(), field.getY() + field.getHeight(), applyAlpha(fillColor, guiAlpha));
-        drawChromaBorder(context,
+        InventoryHudRenderer.drawButtonBorder(context,
                 field.getX() - 1, field.getY() - 1,
                 field.getX() + field.getWidth() + 1,
                 field.getY() + field.getHeight() + 1,
@@ -263,70 +256,31 @@ public class NickHiderScreen extends Screen {
         boolean hover = mouseX >= bx && mouseX <= bx + bw && mouseY >= by && mouseY <= by + bh;
         int fill = applyAlpha(hover ? 0xFF666666 : 0xFF555555, alpha);
         context.fill(bx, by, bx + bw, by + bh, fill);
-        drawChromaBorder(context, bx - 1, by - 1, bx + bw + 1, by + bh + 1, alpha);
+        InventoryHudRenderer.drawButtonBorder(context, bx - 1, by - 1, bx + bw + 1, by + bh + 1, alpha);
 
         // Draw centered text with chroma color
         String label = button.getMessage().getString();
         int textWidth = textRenderer.getWidth(label);
         int tx = bx + (bw - textWidth) / 2;
         int ty = by + (bh - textRenderer.fontHeight) / 2;
-        context.drawTextWithShadow(textRenderer, label, tx, ty, chromaColor);
+        context.drawTextWithShadow(textRenderer, label, tx, ty, resolveTextColor((System.currentTimeMillis() % 4000) / 4000f));
     }
 
-    private void drawChromaBorder(DrawContext context, int left, int top, int right, int bottom, float alpha) {
-        int width = right - left;
-        int height = bottom - top;
-        int perimeter = width * 2 + height * 2;
-        if (perimeter <= 0) return;
-        int pos = 0;
-        for (int x = 0; x < width; x++, pos++) {
-            int c = applyAlpha(chromaColor(pos / (float) perimeter), alpha);
-            context.fill(left + x, top, left + x + 1, top + 1, c);
-        }
-        for (int y = 0; y < height; y++, pos++) {
-            int c = applyAlpha(chromaColor(pos / (float) perimeter), alpha);
-            context.fill(right - 1, top + y, right, top + y + 1, c);
-        }
-        for (int x = width - 1; x >= 0; x--, pos++) {
-            int c = applyAlpha(chromaColor(pos / (float) perimeter), alpha);
-            context.fill(left + x, bottom - 1, left + x + 1, bottom, c);
-        }
-        for (int y = height - 1; y >= 0; y--, pos++) {
-            int c = applyAlpha(chromaColor(pos / (float) perimeter), alpha);
-            context.fill(left, top + y, left + 1, top + y + 1, c);
-        }
+    private int resolveTextColor(float offset) {
+        if (!(RenderConfig.isButtonTextChromaEnabled())) return RenderConfig.getButtonTextColor();
+        double time = (System.currentTimeMillis() % 4000) / 4000.0;
+        float hue = (float) ((time + offset) % 1.0);
+        int rgb = java.awt.Color.HSBtoRGB(hue, 1.0f, 1.0f);
+        return 0xFF000000 | (rgb & 0xFFFFFF);
+    }
+
+    private int chromaColor(float offset) {
+        if (!(RenderConfig.isButtonTextChromaEnabled())) return RenderConfig.getButtonTextColor();
+        return RenderConfig.chromaColor(offset);
     }
 
     private int applyAlpha(int color, float alpha) {
         int a = Math.round(((color >>> 24) & 0xFF) * alpha);
         return (a << 24) | (color & 0x00FFFFFF);
-    }
-
-    private static void openFileInEditor(java.nio.file.Path path) {
-        String file = path.toAbsolutePath().toString();
-        String os = System.getProperty("os.name", "").toLowerCase();
-        try {
-            ProcessBuilder pb;
-            if (os.contains("win")) {
-                pb = new ProcessBuilder("cmd", "/c", "start", "", file);
-            } else if (os.contains("mac")) {
-                pb = new ProcessBuilder("open", file);
-            } else {
-                pb = new ProcessBuilder("sh", "-c", "xdg-open \"" + file + "\" &");
-            }
-            java.io.File devNull = new java.io.File(os.contains("win") ? "NUL" : "/dev/null");
-            pb.redirectInput(ProcessBuilder.Redirect.from(devNull));
-            pb.redirectOutput(ProcessBuilder.Redirect.to(devNull));
-            pb.redirectError(ProcessBuilder.Redirect.to(devNull));
-            pb.start();
-        } catch (Exception ignored) {
-        }
-    }
-
-    private int chromaColor(float offset) {
-        double time = (System.currentTimeMillis() % 4000) / 4000.0;
-        float hue = (float) ((time + offset) % 1.0);
-        int rgb = java.awt.Color.HSBtoRGB(hue, 1.0f, 1.0f);
-        return 0xFF000000 | (rgb & 0xFFFFFF);
     }
 }

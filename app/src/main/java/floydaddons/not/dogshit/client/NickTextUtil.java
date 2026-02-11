@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -18,9 +19,9 @@ import java.util.regex.Pattern;
  * preserving styles and keeping other components intact.
  */
 public final class NickTextUtil {
-    private NickTextUtil() {}
+    private static final String SERVER_ID_REPLACEMENT = "fL0YD";
 
-    private static final Pattern SERVER_ID_PATTERN = Pattern.compile("\\b[a-zA-Z]{1,4}\\d{1,4}[a-zA-Z]{1,2}\\b");
+    private NickTextUtil() {}
 
     public static Text replaceLiteralText(Text original, String find, String replace) {
         return replaceLiteralTextInternal(original, find, replace, false);
@@ -125,7 +126,11 @@ public final class NickTextUtil {
         }
 
         if (serverIdEnabled) {
-            result = replaceServerIdsInOrderedText(result);
+            for (String id : ServerIdTracker.getCachedIds()) {
+                result = replaceInOrderedText(result, id, SERVER_ID_REPLACEMENT);
+            }
+            // Regex catch-all: replace any server ID pattern not yet in the accumulated set
+            result = regexReplaceInOrderedText(result, ServerIdTracker.getFullPattern(), SERVER_ID_REPLACEMENT);
         }
 
         return result;
@@ -159,7 +164,11 @@ public final class NickTextUtil {
         }
 
         if (serverIdEnabled) {
-            result = SERVER_ID_PATTERN.matcher(result).replaceAll(RenderConfig.getServerIdReplacement());
+            for (String id : ServerIdTracker.getCachedIds()) {
+                result = caseInsensitiveReplace(result, id, SERVER_ID_REPLACEMENT);
+            }
+            // Regex catch-all: replace any server ID pattern not yet in the accumulated set
+            result = ServerIdTracker.getFullPattern().matcher(result).replaceAll(SERVER_ID_REPLACEMENT);
         }
 
         return result;
@@ -192,11 +201,11 @@ public final class NickTextUtil {
             }
 
             if (serverIdEnabled) {
-                String content = result.getString();
-                String replaced = SERVER_ID_PATTERN.matcher(content).replaceAll(RenderConfig.getServerIdReplacement());
-                if (!replaced.equals(content)) {
-                    result = Text.literal(replaced).setStyle(result.getStyle());
+                for (String id : ServerIdTracker.getCachedIds()) {
+                    result = replaceLiteralTextIgnoreCase(result, id, SERVER_ID_REPLACEMENT);
                 }
+                // Regex catch-all: replace any server ID pattern not yet in the accumulated set
+                result = regexReplaceLiteralText(result, ServerIdTracker.getFullPattern(), SERVER_ID_REPLACEMENT);
             }
 
             return result;
@@ -207,6 +216,92 @@ public final class NickTextUtil {
         String replaced = replaceAllNamesInString(content);
         if (replaced.equals(content)) return text;
         return Text.literal(replaced);
+    }
+
+    /**
+     * Regex replacement in OrderedText, preserving per-character styles.
+     */
+    private static OrderedText regexReplaceInOrderedText(OrderedText original, Pattern pattern, String replace) {
+        if (original == null) return original;
+
+        List<Integer> codePoints = new ArrayList<>();
+        List<Style> styles = new ArrayList<>();
+        StringBuilder sb = new StringBuilder();
+
+        original.accept((index, style, codePoint) -> {
+            codePoints.add(codePoint);
+            styles.add(style);
+            sb.appendCodePoint(codePoint);
+            return true;
+        });
+
+        if (codePoints.isEmpty()) return original;
+
+        String text = sb.toString();
+        // Only handle BMP text for style-preserving replacement
+        if (text.length() != codePoints.size()) {
+            String replaced = pattern.matcher(text).replaceAll(replace);
+            if (replaced.equals(text)) return original;
+            return OrderedText.styledForwardsVisitedString(replaced, styles.get(0));
+        }
+
+        Matcher m = pattern.matcher(text);
+        if (!m.find()) return original;
+
+        List<Integer> resultCPs = new ArrayList<>();
+        List<Style> resultStyles = new ArrayList<>();
+
+        int idx = 0;
+        m.reset();
+        while (m.find()) {
+            for (int i = idx; i < m.start(); i++) {
+                resultCPs.add(codePoints.get(i));
+                resultStyles.add(styles.get(i));
+            }
+            Style matchStyle = styles.get(m.start());
+            for (int i = 0; i < replace.length(); i++) {
+                resultCPs.add((int) replace.charAt(i));
+                resultStyles.add(matchStyle);
+            }
+            idx = m.end();
+        }
+        for (int i = idx; i < codePoints.size(); i++) {
+            resultCPs.add(codePoints.get(i));
+            resultStyles.add(styles.get(i));
+        }
+
+        List<Integer> finalCPs = List.copyOf(resultCPs);
+        List<Style> finalStyles = List.copyOf(resultStyles);
+        return visitor -> {
+            for (int i = 0; i < finalCPs.size(); i++) {
+                if (!visitor.accept(i, finalStyles.get(i), finalCPs.get(i))) return false;
+            }
+            return true;
+        };
+    }
+
+    /**
+     * Regex replacement in Text, preserving per-component styles.
+     */
+    private static Text regexReplaceLiteralText(Text original, Pattern pattern, String replace) {
+        String fullString = original.getString();
+        if (!pattern.matcher(fullString).find()) return original;
+
+        MutableText result = Text.empty();
+        original.visit((style, content) -> {
+            if (content != null && !content.isEmpty()) {
+                String comp = pattern.matcher(content).replaceAll(replace);
+                result.append(Text.literal(comp).setStyle(style));
+            }
+            return Optional.empty();
+        }, original.getStyle());
+
+        // If server ID was split across components, fall back to flat replacement
+        if (pattern.matcher(result.getString()).find()) {
+            String flat = pattern.matcher(fullString).replaceAll(replace);
+            return Text.literal(flat).setStyle(original.getStyle());
+        }
+        return result;
     }
 
     private static String caseInsensitiveReplace(String text, String find, String replace) {
@@ -225,64 +320,6 @@ public final class NickTextUtil {
             idx = hit + find.length();
         }
         return result.toString();
-    }
-
-    private static OrderedText replaceServerIdsInOrderedText(OrderedText original) {
-        List<Integer> codePoints = new ArrayList<>();
-        List<Style> styles = new ArrayList<>();
-        StringBuilder sb = new StringBuilder();
-
-        original.accept((index, style, codePoint) -> {
-            codePoints.add(codePoint);
-            styles.add(style);
-            sb.appendCodePoint(codePoint);
-            return true;
-        });
-
-        if (codePoints.isEmpty()) return original;
-
-        String text = sb.toString();
-        String replaced = SERVER_ID_PATTERN.matcher(text).replaceAll(RenderConfig.getServerIdReplacement());
-        if (replaced.equals(text)) return original;
-
-        // Supplementary character fallback
-        if (text.length() != codePoints.size()) {
-            return OrderedText.styledForwardsVisitedString(replaced, styles.get(0));
-        }
-
-        // Rebuild with per-character styles using a diff approach
-        String replacement = RenderConfig.getServerIdReplacement();
-        java.util.regex.Matcher matcher = SERVER_ID_PATTERN.matcher(text);
-        List<Integer> resultCPs = new ArrayList<>();
-        List<Style> resultStyles = new ArrayList<>();
-        int idx = 0;
-        while (matcher.find()) {
-            int start = matcher.start();
-            int end = matcher.end();
-            for (int i = idx; i < start; i++) {
-                resultCPs.add(codePoints.get(i));
-                resultStyles.add(styles.get(i));
-            }
-            Style matchStyle = styles.get(start);
-            for (int i = 0; i < replacement.length(); i++) {
-                resultCPs.add((int) replacement.charAt(i));
-                resultStyles.add(matchStyle);
-            }
-            idx = end;
-        }
-        for (int i = idx; i < codePoints.size(); i++) {
-            resultCPs.add(codePoints.get(i));
-            resultStyles.add(styles.get(i));
-        }
-
-        List<Integer> finalCPs = List.copyOf(resultCPs);
-        List<Style> finalStyles = List.copyOf(resultStyles);
-        return visitor -> {
-            for (int i = 0; i < finalCPs.size(); i++) {
-                if (!visitor.accept(i, finalStyles.get(i), finalCPs.get(i))) return false;
-            }
-            return true;
-        };
     }
 
     private static Text replaceLiteralTextInternal(Text original, String find, String replace, boolean ignoreCase) {

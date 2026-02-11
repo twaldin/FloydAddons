@@ -10,19 +10,20 @@ import net.minecraft.util.Util;
 
 /**
  * Render settings screen with compact paired-button layout.
+ * HUD settings (inventory, scoreboard) have moved to HudScreen.
  */
 public class RenderScreen extends Screen {
     private final Screen parent;
 
-    private ButtonWidget inventoryToggle;
-    private ButtonWidget inventoryMoveButton;
-    private ButtonWidget scoreboardToggle;
-    private ButtonWidget scoreboardMoveButton;
+    private ButtonWidget coneHatToggle;
+    private ButtonWidget coneHatConfigButton;
     private ButtonWidget serverIdToggle;
     private ButtonWidget xrayToggle;
     private SliderWidget opacitySlider;
-    private ButtonWidget openFileButton;
+    private ButtonWidget editBlocksButton;
     private ButtonWidget reloadBlocksButton;
+    private ButtonWidget mobEspToggle;
+    private ButtonWidget mobEspConfigButton;
     private ButtonWidget doneButton;
 
     private static final int BOX_WIDTH = 320;
@@ -67,44 +68,33 @@ public class RenderScreen extends Screen {
 
         int le = leftEdge();
 
-        // Row 0: Inventory HUD toggle + Move
-        inventoryToggle = ButtonWidget.builder(Text.literal(inventoryLabel()), b -> {
-            RenderConfig.setInventoryHudEnabled(!RenderConfig.isInventoryHudEnabled());
-            b.setMessage(Text.literal(inventoryLabel()));
+        // Row 0: Cone Hat toggle + Config
+        coneHatToggle = ButtonWidget.builder(Text.literal(coneHatLabel()), b -> {
+            RenderConfig.setFloydHatEnabled(!RenderConfig.isFloydHatEnabled());
+            b.setMessage(Text.literal(coneHatLabel()));
             RenderConfig.save();
         }).dimensions(le, rowY(0), MAIN_W, ROW_HEIGHT).build();
 
-        inventoryMoveButton = ButtonWidget.builder(Text.literal("Move"), b -> {
-            if (client != null) client.setScreen(new MoveInventoryScreen(this));
+        coneHatConfigButton = ButtonWidget.builder(Text.literal("Config"), b -> {
+            if (client != null) client.setScreen(new ConeHatScreen(this));
         }).dimensions(le + MAIN_W + PAIR_GAP, rowY(0), SECONDARY_W, ROW_HEIGHT).build();
 
-        // Row 1: Scoreboard toggle + Move
-        scoreboardToggle = ButtonWidget.builder(Text.literal(scoreboardLabel()), b -> {
-            RenderConfig.setCustomScoreboardEnabled(!RenderConfig.isCustomScoreboardEnabled());
-            b.setMessage(Text.literal(scoreboardLabel()));
-            RenderConfig.save();
-        }).dimensions(le, rowY(1), MAIN_W, ROW_HEIGHT).build();
-
-        scoreboardMoveButton = ButtonWidget.builder(Text.literal("Move"), b -> {
-            if (client != null) client.setScreen(new MoveScoreboardScreen(this));
-        }).dimensions(le + MAIN_W + PAIR_GAP, rowY(1), SECONDARY_W, ROW_HEIGHT).build();
-
-        // Row 2: Server ID Hider
+        // Row 1: Server ID Hider
         serverIdToggle = ButtonWidget.builder(Text.literal(serverIdLabel()), b -> {
             RenderConfig.setServerIdHiderEnabled(!RenderConfig.isServerIdHiderEnabled());
             b.setMessage(Text.literal(serverIdLabel()));
             RenderConfig.save();
-        }).dimensions(le, rowY(2), FULL_W, ROW_HEIGHT).build();
+        }).dimensions(le, rowY(1), FULL_W, ROW_HEIGHT).build();
 
-        // Row 3: X-Ray toggle
+        // Row 2: X-Ray toggle
         xrayToggle = ButtonWidget.builder(Text.literal(xrayLabel()), b -> {
             RenderConfig.toggleXray();
             b.setMessage(Text.literal(xrayLabel()));
-        }).dimensions(le, rowY(3), FULL_W, ROW_HEIGHT).build();
+        }).dimensions(le, rowY(2), FULL_W, ROW_HEIGHT).build();
 
-        // Row 4: Opacity slider
+        // Row 3: Opacity slider
         opacitySlider = new SliderWidget(
-                le, rowY(4), FULL_W, ROW_HEIGHT,
+                le, rowY(3), FULL_W, ROW_HEIGHT,
                 Text.literal(opacityLabel()),
                 opacityToSlider(RenderConfig.getXrayOpacity())
         ) {
@@ -125,46 +115,51 @@ public class RenderScreen extends Screen {
             }
         };
 
-        // Row 5: Open File + Reload Blocks
-        openFileButton = ButtonWidget.builder(Text.literal("Open File"), b -> {
-            try {
-                java.nio.file.Path path = FloydAddonsConfig.getXrayOpaquePath();
-                if (!java.nio.file.Files.exists(path)) {
-                    FloydAddonsConfig.loadXrayOpaque(); // creates template
-                }
-                openFileInEditor(path);
-            } catch (Exception ignored) {}
-        }).dimensions(le, rowY(5), HALF_W, ROW_HEIGHT).build();
+        // Row 4: Edit Blocks + Reload Blocks
+        editBlocksButton = ButtonWidget.builder(Text.literal("Edit Blocks"), b -> {
+            if (client != null) client.setScreen(new XrayEditorScreen(this));
+        }).dimensions(le, rowY(4), HALF_W, ROW_HEIGHT).build();
 
         reloadBlocksButton = ButtonWidget.builder(Text.literal("Reload Blocks"), b -> {
             FloydAddonsConfig.loadXrayOpaque();
             if (RenderConfig.isXrayEnabled()) {
                 RenderConfig.rebuildChunks();
             }
-        }).dimensions(le + HALF_W + PAIR_GAP, rowY(5), HALF_W, ROW_HEIGHT).build();
+        }).dimensions(le + HALF_W + PAIR_GAP, rowY(4), HALF_W, ROW_HEIGHT).build();
+
+        // Row 5: Mob ESP toggle + Config
+        mobEspToggle = ButtonWidget.builder(Text.literal(mobEspLabel()), b -> {
+            RenderConfig.toggleMobEsp();
+            b.setMessage(Text.literal(mobEspLabel()));
+            RenderConfig.save();
+        }).dimensions(le, rowY(5), MAIN_W, ROW_HEIGHT).build();
+
+        mobEspConfigButton = ButtonWidget.builder(Text.literal("Config"), b -> {
+            if (client != null) client.setScreen(new MobEspScreen(this));
+        }).dimensions(le + MAIN_W + PAIR_GAP, rowY(5), SECONDARY_W, ROW_HEIGHT).build();
 
         // Done
         doneButton = ButtonWidget.builder(Text.literal("Done"), b -> close())
                 .dimensions(panelX + (BOX_WIDTH - 100) / 2, panelY + BOX_HEIGHT - 30, 100, ROW_HEIGHT)
                 .build();
 
-        addDrawableChild(inventoryToggle);
-        addDrawableChild(inventoryMoveButton);
-        addDrawableChild(scoreboardToggle);
-        addDrawableChild(scoreboardMoveButton);
+        addDrawableChild(coneHatToggle);
+        addDrawableChild(coneHatConfigButton);
         addDrawableChild(serverIdToggle);
         addDrawableChild(xrayToggle);
         addDrawableChild(opacitySlider);
-        addDrawableChild(openFileButton);
+        addDrawableChild(editBlocksButton);
         addDrawableChild(reloadBlocksButton);
+        addDrawableChild(mobEspToggle);
+        addDrawableChild(mobEspConfigButton);
         addDrawableChild(doneButton);
     }
 
-    private String inventoryLabel() { return "Inventory HUD: " + (RenderConfig.isInventoryHudEnabled() ? "ON" : "OFF"); }
-    private String scoreboardLabel() { return "Scoreboard: " + (RenderConfig.isCustomScoreboardEnabled() ? "ON" : "OFF"); }
+    private String coneHatLabel() { return "Cone Hat: " + (RenderConfig.isFloydHatEnabled() ? "ON" : "OFF"); }
     private String serverIdLabel() { return "Server ID Hider: " + (RenderConfig.isServerIdHiderEnabled() ? "ON" : "OFF"); }
     private String xrayLabel() { return "X-Ray: " + (RenderConfig.isXrayEnabled() ? "ON" : "OFF"); }
     private String opacityLabel() { return "X-Ray Opacity: " + Math.round(RenderConfig.getXrayOpacity() * 100) + "%"; }
+    private String mobEspLabel() { return "Mob ESP: " + (RenderConfig.isMobEspEnabled() ? "ON" : "OFF"); }
 
     private double opacityToSlider(float opacity) {
         return (opacity - 0.05f) / 0.95f;
@@ -222,15 +217,15 @@ public class RenderScreen extends Screen {
         context.fill(left, top, right, bottom, baseColor);
         InventoryHudRenderer.drawChromaBorder(context, left - 1, top - 1, right + 1, bottom + 1, guiAlpha);
 
-        styleButton(context, inventoryToggle, guiAlpha, mouseX, mouseY);
-        styleButton(context, inventoryMoveButton, guiAlpha, mouseX, mouseY);
-        styleButton(context, scoreboardToggle, guiAlpha, mouseX, mouseY);
-        styleButton(context, scoreboardMoveButton, guiAlpha, mouseX, mouseY);
+        styleButton(context, coneHatToggle, guiAlpha, mouseX, mouseY);
+        styleButton(context, coneHatConfigButton, guiAlpha, mouseX, mouseY);
         styleButton(context, serverIdToggle, guiAlpha, mouseX, mouseY);
         styleButton(context, xrayToggle, guiAlpha, mouseX, mouseY);
         styleSlider(context, opacitySlider, guiAlpha, mouseX, mouseY);
-        styleButton(context, openFileButton, guiAlpha, mouseX, mouseY);
+        styleButton(context, editBlocksButton, guiAlpha, mouseX, mouseY);
         styleButton(context, reloadBlocksButton, guiAlpha, mouseX, mouseY);
+        styleButton(context, mobEspToggle, guiAlpha, mouseX, mouseY);
+        styleButton(context, mobEspConfigButton, guiAlpha, mouseX, mouseY);
         styleButton(context, doneButton, guiAlpha, mouseX, mouseY);
 
         // Title
@@ -238,7 +233,7 @@ public class RenderScreen extends Screen {
         int titleWidth = textRenderer.getWidth(title);
         int tx = panelX + (BOX_WIDTH - titleWidth) / 2;
         int ty = panelY + 6;
-        context.drawTextWithShadow(textRenderer, title, tx, ty, applyAlpha(chromaColor(0f), guiAlpha));
+        context.drawTextWithShadow(textRenderer, title, tx, ty, resolveTextColor(guiAlpha, 0f));
 
         matrices.popMatrix();
     }
@@ -286,15 +281,15 @@ public class RenderScreen extends Screen {
 
     private void repositionWidgets() {
         int le = leftEdge();
-        inventoryToggle.setX(le);              inventoryToggle.setY(rowY(0));
-        inventoryMoveButton.setX(le + MAIN_W + PAIR_GAP); inventoryMoveButton.setY(rowY(0));
-        scoreboardToggle.setX(le);             scoreboardToggle.setY(rowY(1));
-        scoreboardMoveButton.setX(le + MAIN_W + PAIR_GAP); scoreboardMoveButton.setY(rowY(1));
-        serverIdToggle.setX(le);               serverIdToggle.setY(rowY(2));
-        xrayToggle.setX(le);                   xrayToggle.setY(rowY(3));
-        opacitySlider.setX(le);                opacitySlider.setY(rowY(4));
-        openFileButton.setX(le);               openFileButton.setY(rowY(5));
-        reloadBlocksButton.setX(le + HALF_W + PAIR_GAP); reloadBlocksButton.setY(rowY(5));
+        coneHatToggle.setX(le);                coneHatToggle.setY(rowY(0));
+        coneHatConfigButton.setX(le + MAIN_W + PAIR_GAP); coneHatConfigButton.setY(rowY(0));
+        serverIdToggle.setX(le);               serverIdToggle.setY(rowY(1));
+        xrayToggle.setX(le);                   xrayToggle.setY(rowY(2));
+        opacitySlider.setX(le);                opacitySlider.setY(rowY(3));
+        editBlocksButton.setX(le);             editBlocksButton.setY(rowY(4));
+        reloadBlocksButton.setX(le + HALF_W + PAIR_GAP); reloadBlocksButton.setY(rowY(4));
+        mobEspToggle.setX(le);                 mobEspToggle.setY(rowY(5));
+        mobEspConfigButton.setX(le + MAIN_W + PAIR_GAP); mobEspConfigButton.setY(rowY(5));
         doneButton.setX(panelX + (BOX_WIDTH - 100) / 2); doneButton.setY(panelY + BOX_HEIGHT - 30);
     }
 
@@ -306,12 +301,13 @@ public class RenderScreen extends Screen {
         boolean hover = mouseX >= bx && mouseX <= bx + bw && mouseY >= by && mouseY <= by + bh;
         int fill = applyAlpha(hover ? 0xFF666666 : 0xFF555555, alpha);
         context.fill(bx, by, bx + bw, by + bh, fill);
-        InventoryHudRenderer.drawChromaBorder(context, bx - 1, by - 1, bx + bw + 1, by + bh + 1, alpha);
+        InventoryHudRenderer.drawButtonBorder(context, bx - 1, by - 1, bx + bw + 1, by + bh + 1, alpha);
         String label = button.getMessage().getString();
         int textWidth = textRenderer.getWidth(label);
         int tx = bx + (bw - textWidth) / 2;
         int ty = by + (bh - textRenderer.fontHeight) / 2;
-        context.drawTextWithShadow(textRenderer, label, tx, ty, applyAlpha(chromaColor((System.currentTimeMillis() % 4000) / 4000f), alpha));
+        float offset = (System.currentTimeMillis() % 4000) / 4000f;
+        context.drawTextWithShadow(textRenderer, label, tx, ty, resolveTextColor(alpha, offset));
     }
 
     private void styleSlider(DrawContext context, SliderWidget slider, float alpha, int mouseX, int mouseY) {
@@ -325,12 +321,20 @@ public class RenderScreen extends Screen {
         float pct = RenderConfig.getXrayOpacity();
         int fillW = (int)((bw - 4) * pct);
         context.fill(bx + 2, by + 2, bx + 2 + fillW, by + bh - 2, applyAlpha(0xFF888888, alpha));
-        InventoryHudRenderer.drawChromaBorder(context, bx - 1, by - 1, bx + bw + 1, by + bh + 1, alpha);
+        InventoryHudRenderer.drawButtonBorder(context, bx - 1, by - 1, bx + bw + 1, by + bh + 1, alpha);
         String label = slider.getMessage().getString();
         int textWidth = textRenderer.getWidth(label);
         int tx = bx + (bw - textWidth) / 2;
         int ty = by + (bh - textRenderer.fontHeight) / 2;
-        context.drawTextWithShadow(textRenderer, label, tx, ty, applyAlpha(chromaColor((System.currentTimeMillis() % 4000) / 4000f), alpha));
+        float offset = (System.currentTimeMillis() % 4000) / 4000f;
+        context.drawTextWithShadow(textRenderer, label, tx, ty, resolveTextColor(alpha, offset));
+    }
+
+    private int resolveTextColor(float alpha, float chromaOffset) {
+        int base = (RenderConfig.isButtonTextChromaEnabled())
+                ? chromaColor(chromaOffset)
+                : RenderConfig.getButtonTextColor();
+        return applyAlpha(base, alpha);
     }
 
     private int applyAlpha(int color, float alpha) {
@@ -339,31 +343,8 @@ public class RenderScreen extends Screen {
     }
 
     private int chromaColor(float offset) {
-        double time = (System.currentTimeMillis() % 4000) / 4000.0;
-        float hue = (float) ((time + offset) % 1.0);
-        int rgb = java.awt.Color.HSBtoRGB(hue, 1.0f, 1.0f);
-        return 0xFF000000 | (rgb & 0xFFFFFF);
-    }
-
-    private static void openFileInEditor(java.nio.file.Path path) {
-        String file = path.toAbsolutePath().toString();
-        String os = System.getProperty("os.name", "").toLowerCase();
-        try {
-            ProcessBuilder pb;
-            if (os.contains("win")) {
-                pb = new ProcessBuilder("cmd", "/c", "start", "", file);
-            } else if (os.contains("mac")) {
-                pb = new ProcessBuilder("open", file);
-            } else {
-                pb = new ProcessBuilder("sh", "-c", "xdg-open \"" + file + "\" &");
-            }
-            java.io.File devNull = new java.io.File(os.contains("win") ? "NUL" : "/dev/null");
-            pb.redirectInput(ProcessBuilder.Redirect.from(devNull));
-            pb.redirectOutput(ProcessBuilder.Redirect.to(devNull));
-            pb.redirectError(ProcessBuilder.Redirect.to(devNull));
-            pb.start();
-        } catch (Exception ignored) {
-        }
+        if (!(RenderConfig.isButtonTextChromaEnabled())) return RenderConfig.getButtonTextColor();
+        return RenderConfig.chromaColor(offset);
     }
 
     private int clamp(int v, int min, int max) { return Math.max(min, Math.min(max, v)); }

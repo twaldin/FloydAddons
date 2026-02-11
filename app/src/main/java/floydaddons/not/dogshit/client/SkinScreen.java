@@ -246,7 +246,7 @@ public class SkinScreen extends Screen {
 
         int baseColor = applyAlpha(0xAA000000, guiAlpha);
         context.fill(left, top, right, bottom, baseColor);
-        drawChromaBorder(context, left - 1, top - 1, right + 1, bottom + 1, guiAlpha);
+        InventoryHudRenderer.drawChromaBorder(context, left - 1, top - 1, right + 1, bottom + 1, guiAlpha);
 
         // Buttons
         styleButton(context, selfToggle, guiAlpha, mouseX, mouseY);
@@ -277,7 +277,7 @@ public class SkinScreen extends Screen {
         boolean barHover = mouseX >= ddX && mouseX <= ddX + ddW && mouseY >= ddY && mouseY <= ddY + ddH;
         int barFill = applyAlpha(barHover ? 0xFF444444 : 0xFF333333, guiAlpha);
         context.fill(ddX, ddY, ddX + ddW, ddY + ddH, barFill);
-        drawChromaBorder(context, ddX - 1, ddY - 1, ddX + ddW + 1, ddY + ddH + 1, guiAlpha);
+        InventoryHudRenderer.drawChromaBorder(context, ddX - 1, ddY - 1, ddX + ddW + 1, ddY + ddH + 1, guiAlpha);
 
         // Current selection label + arrow
         String label = currentSkinLabel();
@@ -294,7 +294,7 @@ public class SkinScreen extends Screen {
         int textW = textRenderer.getWidth(display);
         int textX = ddX + (ddW - textW) / 2;
         int textY = ddY + (ddH - textRenderer.fontHeight) / 2;
-        int chroma = applyAlpha(chromaColor((System.currentTimeMillis() % 4000) / 4000f), guiAlpha);
+        int chroma = applyAlpha(resolveTextColor((System.currentTimeMillis() % 4000) / 4000f), guiAlpha);
         context.drawTextWithShadow(textRenderer, display, textX, textY, chroma);
 
         // Dropdown list
@@ -305,7 +305,7 @@ public class SkinScreen extends Screen {
 
             // Background
             context.fill(ddX, listTop, ddX + ddW, listTop + listHeight, applyAlpha(0xDD000000, guiAlpha));
-            drawChromaBorder(context, ddX - 1, listTop - 1, ddX + ddW + 1, listTop + listHeight + 1, guiAlpha);
+            InventoryHudRenderer.drawChromaBorder(context, ddX - 1, listTop - 1, ddX + ddW + 1, listTop + listHeight + 1, guiAlpha);
 
             String selected = SkinConfig.getSelectedSkin();
             for (int i = 0; i < visibleCount; i++) {
@@ -342,7 +342,7 @@ public class SkinScreen extends Screen {
         } else if (dropdownOpen && availableSkins.isEmpty()) {
             int listTop = ddY + ddH + 2;
             context.fill(ddX, listTop, ddX + ddW, listTop + DROPDOWN_ROW_HEIGHT, applyAlpha(0xDD000000, guiAlpha));
-            drawChromaBorder(context, ddX - 1, listTop - 1, ddX + ddW + 1, listTop + DROPDOWN_ROW_HEIGHT + 1, guiAlpha);
+            InventoryHudRenderer.drawChromaBorder(context, ddX - 1, listTop - 1, ddX + ddW + 1, listTop + DROPDOWN_ROW_HEIGHT + 1, guiAlpha);
             String empty = "No skins found";
             int ew = textRenderer.getWidth(empty);
             context.drawTextWithShadow(textRenderer, empty, ddX + (ddW - ew) / 2, listTop + (DROPDOWN_ROW_HEIGHT - textRenderer.fontHeight) / 2, applyAlpha(0xFF888888, guiAlpha));
@@ -357,12 +357,12 @@ public class SkinScreen extends Screen {
         boolean hover = mouseX >= bx && mouseX <= bx + bw && mouseY >= by && mouseY <= by + bh;
         int fill = applyAlpha(hover ? 0xFF666666 : 0xFF555555, alpha);
         context.fill(bx, by, bx + bw, by + bh, fill);
-        drawChromaBorder(context, bx - 1, by - 1, bx + bw + 1, by + bh + 1, alpha);
+        InventoryHudRenderer.drawButtonBorder(context, bx - 1, by - 1, bx + bw + 1, by + bh + 1, alpha);
         String label = button.getMessage().getString();
         int textWidth = textRenderer.getWidth(label);
         int tx = bx + (bw - textWidth) / 2;
         int ty = by + (bh - textRenderer.fontHeight) / 2;
-        int chroma = chromaColor((System.currentTimeMillis() % 4000) / 4000f);
+        int chroma = resolveTextColor((System.currentTimeMillis() % 4000) / 4000f);
         context.drawTextWithShadow(textRenderer, label, tx, ty, applyAlpha(chroma, alpha));
     }
 
@@ -392,34 +392,8 @@ public class SkinScreen extends Screen {
         }
     }
 
-    private int chromaColor(float offset) {
-        double time = (System.currentTimeMillis() % 4000) / 4000.0;
-        float hue = (float) ((time + offset) % 1.0);
-        int rgb = java.awt.Color.HSBtoRGB(hue, 1.0f, 1.0f);
-        return 0xFF000000 | (rgb & 0xFFFFFF);
-    }
-
-    private void drawChromaBorder(DrawContext context, int left, int top, int right, int bottom, float alpha) {
-        int w = right - left;
-        int h = bottom - top;
-        int perimeter = w * 2 + h * 2;
-        if (perimeter <= 0) return;
-        int pos = 0;
-        for (int x = 0; x < w; x++, pos++) {
-            int c = applyAlpha(chromaColor(pos / (float) perimeter), alpha);
-            context.fill(left + x, top, left + x + 1, top + 1, c);
-        }
-        for (int y = 0; y < h; y++, pos++) {
-            int c = applyAlpha(chromaColor(pos / (float) perimeter), alpha);
-            context.fill(right - 1, top + y, right, top + y + 1, c);
-        }
-        for (int x = w - 1; x >= 0; x--, pos++) {
-            int c = applyAlpha(chromaColor(pos / (float) perimeter), alpha);
-            context.fill(left + x, bottom - 1, left + x + 1, bottom, c);
-        }
-        for (int y = h - 1; y >= 0; y--, pos++) {
-            int c = applyAlpha(chromaColor(pos / (float) perimeter), alpha);
-            context.fill(left, top + y, left + 1, top + y + 1, c);
-        }
+    private int resolveTextColor(float offset) {
+        if (!(RenderConfig.isButtonTextChromaEnabled())) return RenderConfig.getButtonTextColor();
+        return RenderConfig.chromaColor(offset);
     }
 }
