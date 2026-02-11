@@ -21,10 +21,9 @@ public final class RenderConfig {
     private static float coneHatYOffset = -0.5f;
     private static float coneHatRotation = 0.0f;
     private static float coneHatRotationSpeed = 0.0f;
-    private static boolean guiChromaEnabled = true;
-    private static boolean buttonTextChromaEnabled = false;
-    private static boolean buttonBorderChromaEnabled = false;
-    private static boolean guiBorderChromaEnabled = false;
+    private static boolean buttonTextChromaEnabled = true;
+    private static boolean buttonBorderChromaEnabled = true;
+    private static boolean guiBorderChromaEnabled = true;
     private static int guiBorderColor = 0xFFFFFFFF;
     private static int buttonBorderColor = 0xFFFFFFFF;
     private static int buttonTextColor = 0xFFFFFFFF;
@@ -33,7 +32,6 @@ public final class RenderConfig {
     private static int customScoreboardX = -1;
     private static int customScoreboardY = -1;
     private static boolean serverIdHiderEnabled = false;
-    private static String serverIdReplacement = "";
     private static volatile boolean xrayEnabled = false;
     private static float xrayOpacity = 0.3f;
     private static volatile Set<String> xrayOpaqueBlocks = defaultXrayOpaqueBlocks();
@@ -41,6 +39,10 @@ public final class RenderConfig {
     private static boolean mobEspTracers = true;
     private static boolean mobEspHitboxes = true;
     private static boolean mobEspStarMobs = true;
+    private static int defaultEspColor = 0xFFFFFFFF;
+    private static boolean defaultEspChromaEnabled = true;
+    private static int stalkTracerColor = 0xFFFFFFFF;
+    private static boolean stalkTracerChromaEnabled = true;
 
     private RenderConfig() {}
 
@@ -71,9 +73,6 @@ public final class RenderConfig {
 
     public static float getConeHatRotationSpeed() { return coneHatRotationSpeed; }
     public static void setConeHatRotationSpeed(float v) { coneHatRotationSpeed = Math.max(0f, Math.min(360f, v)); }
-
-    public static boolean isGuiChromaEnabled() { return guiChromaEnabled; }
-    public static void setGuiChromaEnabled(boolean v) { guiChromaEnabled = v; }
 
     public static boolean isButtonTextChromaEnabled() { return buttonTextChromaEnabled; }
     public static void setButtonTextChromaEnabled(boolean v) { buttonTextChromaEnabled = v; }
@@ -108,8 +107,6 @@ public final class RenderConfig {
     public static boolean isServerIdHiderEnabled() { return serverIdHiderEnabled; }
     public static void setServerIdHiderEnabled(boolean v) { serverIdHiderEnabled = v; }
 
-    public static String getServerIdReplacement() { return serverIdReplacement; }
-    public static void setServerIdReplacement(String v) { serverIdReplacement = v; }
 
     public static boolean isXrayEnabled() { return xrayEnabled; }
     public static float getXrayOpacity() { return xrayOpacity; }
@@ -133,6 +130,18 @@ public final class RenderConfig {
     public static boolean isMobEspStarMobs() { return mobEspStarMobs; }
     public static void setMobEspStarMobs(boolean v) { mobEspStarMobs = v; }
 
+    public static int getDefaultEspColor() { return ensureOpaque(defaultEspColor); }
+    public static void setDefaultEspColor(int color) { defaultEspColor = ensureOpaque(color); }
+
+    public static boolean isDefaultEspChromaEnabled() { return defaultEspChromaEnabled; }
+    public static void setDefaultEspChromaEnabled(boolean v) { defaultEspChromaEnabled = v; }
+
+    public static int getStalkTracerColor() { return ensureOpaque(stalkTracerColor); }
+    public static void setStalkTracerColor(int color) { stalkTracerColor = ensureOpaque(color); }
+
+    public static boolean isStalkTracerChromaEnabled() { return stalkTracerChromaEnabled; }
+    public static void setStalkTracerChromaEnabled(boolean v) { stalkTracerChromaEnabled = v; }
+
     /** Forces a full chunk rebuild for both vanilla and Sodium renderers. */
     public static void rebuildChunks() {
         net.minecraft.client.MinecraftClient client = net.minecraft.client.MinecraftClient.getInstance();
@@ -149,6 +158,26 @@ public final class RenderConfig {
 
     public static Set<String> getXrayOpaqueBlocks() { return xrayOpaqueBlocks; }
     public static void setXrayOpaqueBlocks(Set<String> blocks) { xrayOpaqueBlocks = blocks; }
+
+    public static boolean addXrayOpaqueBlock(String id) {
+        Set<String> mutable = new LinkedHashSet<>(xrayOpaqueBlocks);
+        boolean added = mutable.add(id);
+        if (added) {
+            xrayOpaqueBlocks = Collections.unmodifiableSet(mutable);
+            rebuildChunks();
+        }
+        return added;
+    }
+
+    public static boolean removeXrayOpaqueBlock(String id) {
+        Set<String> mutable = new LinkedHashSet<>(xrayOpaqueBlocks);
+        boolean removed = mutable.remove(id);
+        if (removed) {
+            xrayOpaqueBlocks = Collections.unmodifiableSet(mutable);
+            rebuildChunks();
+        }
+        return removed;
+    }
 
     /** Check if a block should retain its original opacity during xray. */
     public static boolean isXrayOpaque(BlockState state) {

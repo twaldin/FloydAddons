@@ -96,19 +96,12 @@ public final class MobEspRenderer {
         BufferBuilderStorage storage = ((WorldRendererAccessor) mc.worldRenderer).getBufferBuilders();
         VertexConsumerProvider.Immediate consumers = storage.getEntityVertexConsumers();
 
-        // Chroma color cycling
-        float hue = (float) ((System.currentTimeMillis() % 4000) / 4000.0);
-        int rgb = java.awt.Color.HSBtoRGB(hue, 1.0f, 1.0f);
-        float r = ((rgb >> 16) & 0xFF) / 255.0f;
-        float g = ((rgb >> 8) & 0xFF) / 255.0f;
-        float b = (rgb & 0xFF) / 255.0f;
-
         boolean drawTracers = MobEspManager.isTracersEnabled();
         boolean drawHitboxes = MobEspManager.isHitboxesEnabled();
 
         MatrixStack.Entry entry = context.matrices().peek();
 
-        // Draw tracers
+        // Draw tracers with per-entity colors
         if (drawTracers && !targets.isEmpty()) {
             Vec3d lookVec = mc.player.getRotationVec(tickDelta);
             float sx = (float) (lookVec.x * 2.0);
@@ -119,6 +112,9 @@ public final class MobEspRenderer {
             boolean drew = false;
 
             for (Entity entity : targets) {
+                float[] rgb = resolveEntityColor(entity);
+                float r = rgb[0], g = rgb[1], b = rgb[2];
+
                 Vec3d targetPos = entity.getLerpedPos(tickDelta);
                 float ex = (float) (targetPos.x - cameraPos.x);
                 float ey = (float) (targetPos.y + entity.getHeight() / 2.0 - cameraPos.y);
@@ -139,12 +135,15 @@ public final class MobEspRenderer {
             }
         }
 
-        // Draw wireframe hitbox outlines (edges only)
+        // Draw wireframe hitbox outlines with per-entity colors
         if (drawHitboxes && !targets.isEmpty()) {
             VertexConsumer lineBuf = consumers.getBuffer(MOB_ESP_LAYER);
             boolean drewOutlines = false;
 
             for (Entity entity : targets) {
+                float[] rgb = resolveEntityColor(entity);
+                float r = rgb[0], g = rgb[1], b = rgb[2];
+
                 Box aabb = entity.getBoundingBox();
                 float x1 = (float) (aabb.minX - cameraPos.x);
                 float y1 = (float) (aabb.minY - cameraPos.y);
@@ -166,6 +165,26 @@ public final class MobEspRenderer {
         if (debugActive) {
             renderDebugLabels(context, mc, cameraPos, tickDelta);
         }
+    }
+
+    /**
+     * Resolves the color for an entity: per-entry color or default ESP color.
+     * Returns float[]{r, g, b} in 0..1 range.
+     */
+    private static float[] resolveEntityColor(Entity entity) {
+        int[] colorInfo = MobEspManager.getColorForEntity(entity);
+        int color;
+        if (colorInfo[1] == 1) {
+            // Chroma cycling
+            float hue = (float) ((System.currentTimeMillis() % 4000) / 4000.0);
+            color = java.awt.Color.HSBtoRGB(hue, 1.0f, 1.0f);
+        } else {
+            color = colorInfo[0];
+        }
+        float r = ((color >> 16) & 0xFF) / 255.0f;
+        float g = ((color >> 8) & 0xFF) / 255.0f;
+        float b = (color & 0xFF) / 255.0f;
+        return new float[]{r, g, b};
     }
 
     /**

@@ -4,8 +4,6 @@ import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.client.input.CharInput;
-import net.minecraft.client.input.KeyInput;
 import net.minecraft.text.Text;
 import net.minecraft.util.Util;
 
@@ -16,12 +14,11 @@ import java.util.function.Consumer;
  */
 public class GuiStyleScreen extends Screen {
     private static final int BOX_WIDTH = 260;
-    private static final int BOX_HEIGHT = 170;
+    private static final int BOX_HEIGHT = 140;
     private static final int DRAG_BAR_HEIGHT = 16;
     private static final int ROW_HEIGHT = 18;
     private static final int ROW_SPACING = 24;
     private static final int LABEL_W = 108;
-    private static final int FIELD_W = 0; // no text fields anymore
     private static final int PREVIEW_W = 26;
     private static final int PICK_W = 36;
     private static final long FADE_DURATION_MS = 90;
@@ -30,7 +27,6 @@ public class GuiStyleScreen extends Screen {
     private ButtonWidget textPickButton;
     private ButtonWidget borderPickButton;
     private ButtonWidget guiPickButton;
-    private ButtonWidget applyButton;
     private ButtonWidget doneButton;
 
     private int panelX, panelY;
@@ -68,7 +64,6 @@ public class GuiStyleScreen extends Screen {
         borderPickButton = ButtonWidget.builder(Text.literal("Pick"), b -> openPicker(Target.BUTTON)).dimensions(pickX, rowY(1), PICK_W, ROW_HEIGHT).build();
         guiPickButton = ButtonWidget.builder(Text.literal("Pick"), b -> openPicker(Target.GUI)).dimensions(pickX, rowY(2), PICK_W, ROW_HEIGHT).build();
 
-        applyButton = ButtonWidget.builder(Text.literal("Apply"), b -> applyChanges()).dimensions(panelX + (BOX_WIDTH - 80) / 2, rowY(3), 80, ROW_HEIGHT).build();
         doneButton = ButtonWidget.builder(Text.literal("Done"), b -> {
             applyChanges();
             close();
@@ -77,7 +72,6 @@ public class GuiStyleScreen extends Screen {
         addDrawableChild(textPickButton);
         addDrawableChild(borderPickButton);
         addDrawableChild(guiPickButton);
-        addDrawableChild(applyButton);
         addDrawableChild(doneButton);
     }
 
@@ -126,42 +120,49 @@ public class GuiStyleScreen extends Screen {
         context.fill(left, top, right, bottom, applyAlpha(0xAA000000, guiAlpha));
         InventoryHudRenderer.drawChromaBorder(context, left - 1, top - 1, right + 1, bottom + 1, guiAlpha);
 
-        drawRow(context, "Button Text", rowY(0), liveTextColor, guiAlpha);
-        drawRow(context, "Button Border", rowY(1), liveButtonBorderColor, guiAlpha);
-        drawRow(context, "GUI Border", rowY(2), liveGuiBorderColor, guiAlpha);
+        drawRow(context, "Button Text", rowY(0), liveTextColor, RenderConfig.isButtonTextChromaEnabled(), guiAlpha);
+        drawRow(context, "Button Border", rowY(1), liveButtonBorderColor, RenderConfig.isButtonBorderChromaEnabled(), guiAlpha);
+        drawRow(context, "GUI Border", rowY(2), liveGuiBorderColor, RenderConfig.isGuiBorderChromaEnabled(), guiAlpha);
 
         // Pick buttons
         styleButton(context, textPickButton, guiAlpha, mouseX, mouseY);
         styleButton(context, borderPickButton, guiAlpha, mouseX, mouseY);
         styleButton(context, guiPickButton, guiAlpha, mouseX, mouseY);
 
-        styleButton(context, applyButton, guiAlpha, mouseX, mouseY);
         styleButton(context, doneButton, guiAlpha, mouseX, mouseY);
 
         // Title
         String title = "GUI Style";
         int titleWidth = textRenderer.getWidth(title);
+        int titleColor = RenderConfig.isButtonTextChromaEnabled()
+                ? chromaColor(0f) : liveTextColor;
         context.drawTextWithShadow(textRenderer, title, panelX + (BOX_WIDTH - titleWidth) / 2, panelY + 6,
-                applyAlpha(RenderConfig.isGuiChromaEnabled() ? chromaColor(0f) : liveTextColor, guiAlpha));
+                applyAlpha(titleColor, guiAlpha));
 
         matrices.popMatrix();
     }
 
-    private void drawRow(DrawContext context, String label, int y, int previewColor, float alpha) {
+    private void drawRow(DrawContext context, String label, int y, int previewColor, boolean chroma, float alpha) {
         int labelX = leftEdge();
+        int labelColor = RenderConfig.isButtonTextChromaEnabled() ? chromaColor(0f) : liveTextColor;
         context.drawTextWithShadow(textRenderer, label, labelX, y + (ROW_HEIGHT - textRenderer.fontHeight) / 2,
-                applyAlpha((RenderConfig.isButtonTextChromaEnabled() || RenderConfig.isGuiChromaEnabled()) ? chromaColor(0f) : liveTextColor, alpha));
+                applyAlpha(labelColor, alpha));
 
         int previewX = leftEdge() + LABEL_W + 6;
         int previewY = y;
         context.fill(previewX, previewY, previewX + PREVIEW_W, previewY + ROW_HEIGHT, applyAlpha(0xFF222222, alpha));
-        context.fill(previewX + 1, previewY + 1, previewX + PREVIEW_W - 1, previewY + ROW_HEIGHT - 1,
-                applyAlpha(previewColor, alpha));
-        if (RenderConfig.isButtonBorderChromaEnabled() || RenderConfig.isGuiChromaEnabled()) {
-            InventoryHudRenderer.drawButtonBorder(context, previewX, previewY, previewX + PREVIEW_W, previewY + ROW_HEIGHT, alpha);
+
+        // Show cycling chroma color if chroma is enabled, otherwise static color
+        int displayColor;
+        if (chroma) {
+            float hue = (float) ((System.currentTimeMillis() % 4000) / 4000.0);
+            displayColor = java.awt.Color.HSBtoRGB(hue, 1.0f, 1.0f) | 0xFF000000;
         } else {
-            drawSolidBorder(context, previewX, previewY, previewX + PREVIEW_W, previewY + ROW_HEIGHT, previewColor, alpha);
+            displayColor = previewColor;
         }
+        context.fill(previewX + 1, previewY + 1, previewX + PREVIEW_W - 1, previewY + ROW_HEIGHT - 1,
+                applyAlpha(displayColor, alpha));
+        InventoryHudRenderer.drawButtonBorder(context, previewX, previewY, previewX + PREVIEW_W, previewY + ROW_HEIGHT, alpha);
     }
 
     private void styleButton(DrawContext context, ButtonWidget button, float alpha, int mouseX, int mouseY) {
@@ -172,17 +173,12 @@ public class GuiStyleScreen extends Screen {
         boolean hover = mouseX >= bx && mouseX <= bx + bw && mouseY >= by && mouseY <= by + bh;
         int fill = applyAlpha(hover ? 0xFF666666 : 0xFF555555, alpha);
         context.fill(bx, by, bx + bw, by + bh, fill);
-        if (RenderConfig.isGuiChromaEnabled()) {
-            InventoryHudRenderer.drawButtonBorder(context, bx - 1, by - 1, bx + bw + 1, by + bh + 1, alpha);
-        } else {
-            drawSolidBorder(context, bx - 1, by - 1, bx + bw + 1, by + bh + 1, liveButtonBorderColor, alpha);
-        }
+        InventoryHudRenderer.drawButtonBorder(context, bx - 1, by - 1, bx + bw + 1, by + bh + 1, alpha);
         String label = button.getMessage().getString();
         int tw = textRenderer.getWidth(label);
         int tx = bx + (bw - tw) / 2;
         int ty = by + (bh - textRenderer.fontHeight) / 2;
-        boolean textChroma = RenderConfig.isButtonTextChromaEnabled() || RenderConfig.isGuiChromaEnabled();
-        int color = textChroma
+        int color = RenderConfig.isButtonTextChromaEnabled()
                 ? applyAlpha(chromaColor((System.currentTimeMillis() % 4000) / 4000f), alpha)
                 : applyAlpha(liveTextColor, alpha);
         context.drawTextWithShadow(textRenderer, label, tx, ty, color);
@@ -229,52 +225,13 @@ public class GuiStyleScreen extends Screen {
         return super.mouseReleased(click);
     }
 
-    @Override
-    public boolean keyPressed(KeyInput input) {
-        return super.keyPressed(input);
-    }
-
-    @Override
-    public boolean charTyped(CharInput input) {
-        return super.charTyped(input);
-    }
-
     private void repositionWidgets() {
         int le = leftEdge() + LABEL_W + 6;
         int pickX = le + PREVIEW_W + 8;
         textPickButton.setX(pickX); textPickButton.setY(rowY(0));
         borderPickButton.setX(pickX); borderPickButton.setY(rowY(1));
         guiPickButton.setX(pickX); guiPickButton.setY(rowY(2));
-        applyButton.setX(panelX + (BOX_WIDTH - 80) / 2); applyButton.setY(rowY(3));
         doneButton.setX(panelX + (BOX_WIDTH - 96) / 2); doneButton.setY(panelY + BOX_HEIGHT - 26);
-    }
-
-    private int parseColor(String input, int fallback) {
-        if (input == null) return fallback;
-        String s = input.trim();
-        if (s.startsWith("#")) s = s.substring(1);
-        if (s.length() == 3) {
-            s = "" + s.charAt(0) + s.charAt(0) + s.charAt(1) + s.charAt(1) + s.charAt(2) + s.charAt(2);
-        }
-        if (s.length() != 6) return fallback;
-        try {
-            int val = Integer.parseInt(s, 16);
-            return 0xFF000000 | val;
-        } catch (NumberFormatException e) {
-            return fallback;
-        }
-    }
-
-    private String colorToHex(int color) {
-        return String.format("#%06X", color & 0xFFFFFF);
-    }
-
-    private void drawSolidBorder(DrawContext context, int left, int top, int right, int bottom, int color, float alpha) {
-        int c = applyAlpha(color, alpha);
-        context.fill(left, top, right, top + 1, c);
-        context.fill(left, bottom - 1, right, bottom, c);
-        context.fill(left, top, left + 1, bottom, c);
-        context.fill(right - 1, top, right, bottom, c);
     }
 
     private int applyAlpha(int color, float alpha) {

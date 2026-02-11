@@ -68,15 +68,8 @@ public class NickHiderScreen extends Screen {
             NickHiderConfig.save();
         }).dimensions(cx, panelY + 40, 220, 20).build();
 
-        editNamesButton = ButtonWidget.builder(Text.literal("Edit Names File"), button -> {
-            try {
-                java.nio.file.Path path = NickHiderConfig.getNamesConfigPath();
-                if (!java.nio.file.Files.exists(path)) {
-                    NickHiderConfig.loadNameMappings(); // creates template
-                }
-                openFileInEditor(path);
-            } catch (Exception ignored) {
-            }
+        editNamesButton = ButtonWidget.builder(Text.literal("Edit Names"), button -> {
+            if (client != null) client.setScreen(new NameMappingsEditorScreen(this));
         }).dimensions(cx, panelY + 68, 107, 20).build();
 
         reloadNamesButton = ButtonWidget.builder(Text.literal("Reload Names"), button -> {
@@ -157,7 +150,7 @@ public class NickHiderScreen extends Screen {
         styleButtonFlat(context, reloadNamesButton, chromaSlow, guiAlpha, mouseX, mouseY);
 
         // Hint
-        String hint = "Edit name-mappings.json to rename specific players";
+        String hint = "Use 'Edit Names' to manage player nicknames";
         int hintColor = applyAlpha(0xFF888888, guiAlpha);
         int hintX = panelX + (BOX_WIDTH - textRenderer.getWidth(hint)) / 2;
         context.drawTextWithShadow(textRenderer, hint, hintX, panelY + 92, hintColor);
@@ -274,36 +267,15 @@ public class NickHiderScreen extends Screen {
     }
 
     private int resolveTextColor(float offset) {
-        if (!(RenderConfig.isButtonTextChromaEnabled() || RenderConfig.isGuiChromaEnabled())) return RenderConfig.getButtonTextColor();
+        if (!(RenderConfig.isButtonTextChromaEnabled())) return RenderConfig.getButtonTextColor();
         double time = (System.currentTimeMillis() % 4000) / 4000.0;
         float hue = (float) ((time + offset) % 1.0);
         int rgb = java.awt.Color.HSBtoRGB(hue, 1.0f, 1.0f);
         return 0xFF000000 | (rgb & 0xFFFFFF);
     }
 
-    private static void openFileInEditor(java.nio.file.Path path) {
-        String file = path.toAbsolutePath().toString();
-        String os = System.getProperty("os.name", "").toLowerCase();
-        try {
-            ProcessBuilder pb;
-            if (os.contains("win")) {
-                pb = new ProcessBuilder("cmd", "/c", "start", "", file);
-            } else if (os.contains("mac")) {
-                pb = new ProcessBuilder("open", file);
-            } else {
-                pb = new ProcessBuilder("sh", "-c", "xdg-open \"" + file + "\" &");
-            }
-            java.io.File devNull = new java.io.File(os.contains("win") ? "NUL" : "/dev/null");
-            pb.redirectInput(ProcessBuilder.Redirect.from(devNull));
-            pb.redirectOutput(ProcessBuilder.Redirect.to(devNull));
-            pb.redirectError(ProcessBuilder.Redirect.to(devNull));
-            pb.start();
-        } catch (Exception ignored) {
-        }
-    }
-
     private int chromaColor(float offset) {
-        if (!(RenderConfig.isButtonTextChromaEnabled() || RenderConfig.isGuiChromaEnabled())) return RenderConfig.getButtonTextColor();
+        if (!(RenderConfig.isButtonTextChromaEnabled())) return RenderConfig.getButtonTextColor();
         return RenderConfig.chromaColor(offset);
     }
 

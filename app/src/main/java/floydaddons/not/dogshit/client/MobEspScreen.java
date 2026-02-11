@@ -8,7 +8,8 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Util;
 
 /**
- * Mob ESP sub-config screen: tracers, hitboxes, star mobs toggles, Open File, Reload.
+ * Mob ESP sub-config screen: tracers, hitboxes, star mobs toggles,
+ * default ESP color, stalk tracer color, and edit filters button.
  */
 public class MobEspScreen extends Screen {
     private final Screen parent;
@@ -16,19 +17,22 @@ public class MobEspScreen extends Screen {
     private ButtonWidget tracersToggle;
     private ButtonWidget hitboxesToggle;
     private ButtonWidget starMobsToggle;
-    private ButtonWidget openFileButton;
-    private ButtonWidget reloadButton;
+    private ButtonWidget editFiltersButton;
     private ButtonWidget doneButton;
 
+    // Color preview rects (drawn manually)
+    private static final int COLOR_PREVIEW_SIZE = 16;
+
     private static final int BOX_WIDTH = 320;
-    private static final int BOX_HEIGHT = 186;
+    private static final int BOX_HEIGHT = 264;
     private static final int DRAG_BAR_HEIGHT = 18;
     private static final long FADE_DURATION_MS = 90;
     private static final int ROW_HEIGHT = 20;
     private static final int ROW_SPACING = 26;
 
     private static final int FULL_W = 220;
-    private static final int HALF_W = 108;
+    private static final int MAIN_W = 148;
+    private static final int SECONDARY_W = 68;
     private static final int PAIR_GAP = 4;
 
     private int panelX, panelY;
@@ -39,6 +43,11 @@ public class MobEspScreen extends Screen {
     private long openStartMs;
     private long closeStartMs;
     private boolean closing = false;
+
+    // Color row tracking for click handling
+    private int espColorRowY;
+    private int stalkColorRowY;
+    private int colorPickBtnX;
 
     public MobEspScreen(Screen parent) {
         super(Text.literal("Mob ESP Config"));
@@ -79,20 +88,12 @@ public class MobEspScreen extends Screen {
             RenderConfig.save();
         }).dimensions(le, rowY(2), FULL_W, ROW_HEIGHT).build();
 
-        // Row 3: Open File + Reload
-        openFileButton = ButtonWidget.builder(Text.literal("Open File"), b -> {
-            try {
-                java.nio.file.Path path = FloydAddonsConfig.getMobEspPath();
-                if (!java.nio.file.Files.exists(path)) {
-                    FloydAddonsConfig.loadMobEsp();
-                }
-                openFileInEditor(path);
-            } catch (Exception ignored) {}
-        }).dimensions(le, rowY(3), HALF_W, ROW_HEIGHT).build();
+        // Rows 3-4: color pickers drawn manually
 
-        reloadButton = ButtonWidget.builder(Text.literal("Reload"), b -> {
-            FloydAddonsConfig.loadMobEsp();
-        }).dimensions(le + HALF_W + PAIR_GAP, rowY(3), HALF_W, ROW_HEIGHT).build();
+        // Row 5: Edit Filters
+        editFiltersButton = ButtonWidget.builder(Text.literal("Edit Filters"), b -> {
+            if (client != null) client.setScreen(new MobEspEditorScreen(this));
+        }).dimensions(le, rowY(5), FULL_W, ROW_HEIGHT).build();
 
         // Done
         doneButton = ButtonWidget.builder(Text.literal("Done"), b -> close())
@@ -102,8 +103,7 @@ public class MobEspScreen extends Screen {
         addDrawableChild(tracersToggle);
         addDrawableChild(hitboxesToggle);
         addDrawableChild(starMobsToggle);
-        addDrawableChild(openFileButton);
-        addDrawableChild(reloadButton);
+        addDrawableChild(editFiltersButton);
         addDrawableChild(doneButton);
     }
 
@@ -155,8 +155,21 @@ public class MobEspScreen extends Screen {
         styleButton(context, tracersToggle, guiAlpha, mouseX, mouseY);
         styleButton(context, hitboxesToggle, guiAlpha, mouseX, mouseY);
         styleButton(context, starMobsToggle, guiAlpha, mouseX, mouseY);
-        styleButton(context, openFileButton, guiAlpha, mouseX, mouseY);
-        styleButton(context, reloadButton, guiAlpha, mouseX, mouseY);
+
+        // Row 3: Default ESP Color
+        int le = leftEdge();
+        espColorRowY = rowY(3);
+        drawColorRow(context, "Default ESP Color", RenderConfig.getDefaultEspColor(),
+                RenderConfig.isDefaultEspChromaEnabled(), le, espColorRowY, guiAlpha, mouseX, mouseY);
+
+        // Row 4: Stalk Tracer Color
+        stalkColorRowY = rowY(4);
+        drawColorRow(context, "Stalk Tracer Color", RenderConfig.getStalkTracerColor(),
+                RenderConfig.isStalkTracerChromaEnabled(), le, stalkColorRowY, guiAlpha, mouseX, mouseY);
+
+        colorPickBtnX = le + FULL_W - SECONDARY_W;
+
+        styleButton(context, editFiltersButton, guiAlpha, mouseX, mouseY);
         styleButton(context, doneButton, guiAlpha, mouseX, mouseY);
 
         // Title
@@ -165,22 +178,82 @@ public class MobEspScreen extends Screen {
         int tx = panelX + (BOX_WIDTH - titleWidth) / 2;
         int ty = panelY + 6;
         context.drawTextWithShadow(textRenderer, title, tx, ty, applyAlpha(chromaColor(0f), guiAlpha));
-
         matrices.popMatrix();
+    }
+
+    private void drawColorRow(DrawContext context, String label, int color, boolean chroma,
+                               int x, int y, float alpha, int mouseX, int mouseY) {
+        // Label text
+        int textColor = applyAlpha(chromaColor((System.currentTimeMillis() % 4000) / 4000f), alpha);
+        context.drawTextWithShadow(textRenderer, label, x, y + (ROW_HEIGHT - textRenderer.fontHeight) / 2, textColor);
+
+        // Color preview square
+        int previewX = x + FULL_W - SECONDARY_W - COLOR_PREVIEW_SIZE - PAIR_GAP;
+        int previewY = y + (ROW_HEIGHT - COLOR_PREVIEW_SIZE) / 2;
+        int previewColor;
+        if (chroma) {
+            float hue = (float) ((System.currentTimeMillis() % 4000) / 4000.0);
+            previewColor = applyAlpha(java.awt.Color.HSBtoRGB(hue, 1.0f, 1.0f) | 0xFF000000, alpha);
+        } else {
+            previewColor = applyAlpha(color, alpha);
+        }
+        context.fill(previewX, previewY, previewX + COLOR_PREVIEW_SIZE, previewY + COLOR_PREVIEW_SIZE, previewColor);
+        InventoryHudRenderer.drawButtonBorder(context, previewX - 1, previewY - 1,
+                previewX + COLOR_PREVIEW_SIZE + 1, previewY + COLOR_PREVIEW_SIZE + 1, alpha);
+
+        // "Pick" button
+        int btnX = x + FULL_W - SECONDARY_W;
+        boolean hover = mouseX >= btnX && mouseX <= btnX + SECONDARY_W && mouseY >= y && mouseY <= y + ROW_HEIGHT;
+        int fill = applyAlpha(hover ? 0xFF666666 : 0xFF555555, alpha);
+        context.fill(btnX, y, btnX + SECONDARY_W, y + ROW_HEIGHT, fill);
+        InventoryHudRenderer.drawButtonBorder(context, btnX - 1, y - 1, btnX + SECONDARY_W + 1, y + ROW_HEIGHT + 1, alpha);
+        String pickLabel = "Pick";
+        int tw = textRenderer.getWidth(pickLabel);
+        context.drawTextWithShadow(textRenderer, pickLabel, btnX + (SECONDARY_W - tw) / 2,
+                y + (ROW_HEIGHT - textRenderer.fontHeight) / 2, textColor);
     }
 
     @Override
     public boolean mouseClicked(Click click, boolean ignoresInput) {
         double mx = click.x();
         double my = click.y();
-        if (click.button() == 0 && mx >= panelX && mx <= panelX + BOX_WIDTH
-                && my >= panelY && my <= panelY + DRAG_BAR_HEIGHT) {
-            dragging = true;
-            dragStartMouseX = mx;
-            dragStartMouseY = my;
-            dragStartPanelX = panelX;
-            dragStartPanelY = panelY;
-            return true;
+        if (click.button() == 0) {
+            // Drag bar
+            if (mx >= panelX && mx <= panelX + BOX_WIDTH
+                    && my >= panelY && my <= panelY + DRAG_BAR_HEIGHT) {
+                dragging = true;
+                dragStartMouseX = mx;
+                dragStartMouseY = my;
+                dragStartPanelX = panelX;
+                dragStartPanelY = panelY;
+                return true;
+            }
+
+            int btnX = leftEdge() + FULL_W - SECONDARY_W;
+
+            // ESP color pick button
+            if (mx >= btnX && mx <= btnX + SECONDARY_W && my >= espColorRowY && my <= espColorRowY + ROW_HEIGHT) {
+                if (client != null) {
+                    client.setScreen(new ColorPickerScreen(this, "Default ESP",
+                            RenderConfig.getDefaultEspColor(),
+                            RenderConfig::setDefaultEspColor,
+                            RenderConfig::isDefaultEspChromaEnabled,
+                            RenderConfig::setDefaultEspChromaEnabled));
+                }
+                return true;
+            }
+
+            // Stalk tracer color pick button
+            if (mx >= btnX && mx <= btnX + SECONDARY_W && my >= stalkColorRowY && my <= stalkColorRowY + ROW_HEIGHT) {
+                if (client != null) {
+                    client.setScreen(new ColorPickerScreen(this, "Stalk Tracer",
+                            RenderConfig.getStalkTracerColor(),
+                            RenderConfig::setStalkTracerColor,
+                            RenderConfig::isStalkTracerChromaEnabled,
+                            RenderConfig::setStalkTracerChromaEnabled));
+                }
+                return true;
+            }
         }
         return super.mouseClicked(click, ignoresInput);
     }
@@ -214,8 +287,7 @@ public class MobEspScreen extends Screen {
         tracersToggle.setX(le);    tracersToggle.setY(rowY(0));
         hitboxesToggle.setX(le);   hitboxesToggle.setY(rowY(1));
         starMobsToggle.setX(le);   starMobsToggle.setY(rowY(2));
-        openFileButton.setX(le);   openFileButton.setY(rowY(3));
-        reloadButton.setX(le + HALF_W + PAIR_GAP); reloadButton.setY(rowY(3));
+        editFiltersButton.setX(le); editFiltersButton.setY(rowY(5));
         doneButton.setX(panelX + (BOX_WIDTH - 100) / 2); doneButton.setY(panelY + BOX_HEIGHT - 30);
     }
 
@@ -223,7 +295,7 @@ public class MobEspScreen extends Screen {
         int bx = button.getX(), by = button.getY(), bw = button.getWidth(), bh = button.getHeight();
         boolean hover = mouseX >= bx && mouseX <= bx + bw && mouseY >= by && mouseY <= by + bh;
         context.fill(bx, by, bx + bw, by + bh, applyAlpha(hover ? 0xFF666666 : 0xFF555555, alpha));
-        InventoryHudRenderer.drawChromaBorder(context, bx - 1, by - 1, bx + bw + 1, by + bh + 1, alpha);
+        InventoryHudRenderer.drawButtonBorder(context, bx - 1, by - 1, bx + bw + 1, by + bh + 1, alpha);
         String label = button.getMessage().getString();
         int tw = textRenderer.getWidth(label);
         context.drawTextWithShadow(textRenderer, label, bx + (bw - tw) / 2, by + (bh - textRenderer.fontHeight) / 2,
@@ -236,27 +308,7 @@ public class MobEspScreen extends Screen {
     }
 
     private int chromaColor(float offset) {
-        if (!(RenderConfig.isButtonTextChromaEnabled() || RenderConfig.isGuiChromaEnabled())) return RenderConfig.getButtonTextColor();
+        if (!(RenderConfig.isButtonTextChromaEnabled())) return RenderConfig.getButtonTextColor();
         return RenderConfig.chromaColor(offset);
-    }
-
-    private static void openFileInEditor(java.nio.file.Path path) {
-        String file = path.toAbsolutePath().toString();
-        String os = System.getProperty("os.name", "").toLowerCase();
-        try {
-            ProcessBuilder pb;
-            if (os.contains("win")) {
-                pb = new ProcessBuilder("cmd", "/c", "start", "", file);
-            } else if (os.contains("mac")) {
-                pb = new ProcessBuilder("open", file);
-            } else {
-                pb = new ProcessBuilder("sh", "-c", "xdg-open \"" + file + "\" &");
-            }
-            java.io.File devNull = new java.io.File(os.contains("win") ? "NUL" : "/dev/null");
-            pb.redirectInput(ProcessBuilder.Redirect.from(devNull));
-            pb.redirectOutput(ProcessBuilder.Redirect.to(devNull));
-            pb.redirectError(ProcessBuilder.Redirect.to(devNull));
-            pb.start();
-        } catch (Exception ignored) {}
     }
 }

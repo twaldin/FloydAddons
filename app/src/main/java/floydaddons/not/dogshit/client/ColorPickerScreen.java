@@ -1,38 +1,29 @@
 package floydaddons.not.dogshit.client;
 
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
-import net.minecraft.client.input.CharInput;
-import net.minecraft.client.input.KeyInput;
-import net.minecraft.client.texture.NativeImage;
-import net.minecraft.client.texture.NativeImageBackedTexture;
 import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
 import net.minecraft.util.Util;
 
 import java.awt.Color;
-import java.util.function.Consumer;
 import java.util.function.BooleanSupplier;
-
-import floydaddons.not.dogshit.client.FloydAddonsClient;
-import floydaddons.not.dogshit.client.InventoryHudRenderer;
-import floydaddons.not.dogshit.client.RenderConfig;
+import java.util.function.Consumer;
 
 /**
- * Standalone color picker with wheel + value slider.
+ * Color picker with SV rectangle gradient + vertical hue bar.
+ * Changes are only applied when the Apply button is pressed.
  */
 public class ColorPickerScreen extends Screen {
     private static final int BOX_WIDTH = 240;
     private static final int BOX_HEIGHT = 220;
     private static final int DRAG_BAR_HEIGHT = 16;
-    private static final int WHEEL_SIZE = 96;
-    private static final int SLIDER_W = 12;
-    private static final int SLIDER_H = 96;
+    private static final int SV_SIZE = 128;
+    private static final int HUE_BAR_W = 14;
+    private static final int HUE_BAR_H = 128;
+    private static final int PREVIEW_SIZE = 28;
     private static final long FADE_DURATION_MS = 90;
 
     private final Screen parent;
@@ -43,8 +34,8 @@ public class ColorPickerScreen extends Screen {
 
     private int panelX, panelY;
     private boolean dragging = false;
-    private boolean draggingWheel = false;
-    private boolean draggingValue = false;
+    private boolean draggingSV = false;
+    private boolean draggingHue = false;
     private double dragStartMouseX, dragStartMouseY;
     private int dragStartPanelX, dragStartPanelY;
 
@@ -56,13 +47,20 @@ public class ColorPickerScreen extends Screen {
     private float sat;
     private float val;
 
+    private int originalColor;
+    private boolean originalChroma;
+
     private ButtonWidget applyButton;
     private ButtonWidget cancelButton;
     private TextFieldWidget hexField;
     private ButtonWidget chromaButton;
     private boolean chromaEnabled;
 
-    public ColorPickerScreen(Screen parent, String titleText, int initialColor, Consumer<Integer> applyCallback,
+    /** Guard flag to prevent setText -> changedListener -> setText infinite loop */
+    private boolean updatingHex = false;
+
+    public ColorPickerScreen(Screen parent, String titleText, int initialColor,
+                             Consumer<Integer> applyCallback,
                              BooleanSupplier chromaGetter, Consumer<Boolean> chromaSetter) {
         super(Text.literal(titleText + " Picker"));
         this.parent = parent;
@@ -70,15 +68,19 @@ public class ColorPickerScreen extends Screen {
         this.applyCallback = applyCallback;
         this.chromaGetter = chromaGetter;
         this.chromaSetter = chromaSetter;
+        this.originalColor = initialColor;
 
-        float[] hsv = Color.RGBtoHSB((initialColor >> 16) & 0xFF, (initialColor >> 8) & 0xFF, initialColor & 0xFF, null);
+        float[] hsv = Color.RGBtoHSB((initialColor >> 16) & 0xFF,
+                (initialColor >> 8) & 0xFF, initialColor & 0xFF, null);
         this.hue = hsv[0];
         this.sat = hsv[1];
         this.val = hsv[2];
     }
 
-    private int pickerX() { return panelX + 16; }
-    private int pickerY() { return panelY + 30; }
+    private int svX() { return panelX + 16; }
+    private int svY() { return panelY + 26; }
+    private int hueBarX() { return svX() + SV_SIZE + 12; }
+    private int hueBarY() { return svY(); }
 
     @Override
     protected void init() {
@@ -88,10 +90,21 @@ public class ColorPickerScreen extends Screen {
         panelX = (width - BOX_WIDTH) / 2;
         panelY = (height - BOX_HEIGHT) / 2;
         chromaEnabled = chromaGetter.getAsBoolean();
+        originalChroma = chromaEnabled;
 
-        hexField = new TextFieldWidget(textRenderer, 0, 0, 90, 18, Text.literal("#"));
-        hexField.setMaxLength(7);
+        hexField = new TextFieldWidget(textRenderer, 0, 0, 80, 18, Text.literal("Hex"));
+        hexField.setMaxLength(6);
+        hexField.setEditableColor(0xFFFFFFFF);
+        hexField.setUneditableColor(0xFFFFFFFF);
+        hexField.setDrawsBackground(false);
+        updatingHex = true;
         hexField.setText(colorToHex(currentColor()));
+        updatingHex = false;
+        hexField.setChangedListener(text -> {
+            if (!updatingHex) {
+                syncHsvFromHex();
+            }
+        });
         addSelectableChild(hexField);
 
         chromaButton = ButtonWidget.builder(Text.literal(chromaLabel()), b -> toggleChroma())
@@ -100,22 +113,29 @@ public class ColorPickerScreen extends Screen {
 
         applyButton = ButtonWidget.builder(Text.literal("Apply"), b -> applyAndClose())
                 .dimensions(0, 0, 80, 18).build();
-        cancelButton = ButtonWidget.builder(Text.literal("Cancel"), b -> close())
+        cancelButton = ButtonWidget.builder(Text.literal("Cancel"), b -> cancelAndClose())
                 .dimensions(0, 0, 80, 18).build();
         addDrawableChild(applyButton);
         addDrawableChild(cancelButton);
 
         repositionWidgets();
-
-        ColorWheel.ensure();
     }
 
     private void applyAndClose() {
-        int parsed = parseHex(hexField.getText(), currentColor());
-        setFromColor(parsed);
-        applyCallback.accept(parsed);
-        chromaSetter.accept(chromaEnabled);
-        RenderConfig.save();
+        try {
+            applyCallback.accept(currentColor());
+            chromaSetter.accept(chromaEnabled);
+            RenderConfig.save();
+        } catch (Exception ignored) {}
+        close();
+    }
+
+    private void cancelAndClose() {
+        try {
+            applyCallback.accept(originalColor);
+            chromaSetter.accept(originalChroma);
+            RenderConfig.save();
+        } catch (Exception ignored) {}
         close();
     }
 
@@ -129,9 +149,10 @@ public class ColorPickerScreen extends Screen {
     private void repositionWidgets() {
         int buttonsY = panelY + BOX_HEIGHT - 32;
         int hexY = panelY + BOX_HEIGHT - 56;
-        hexField.setX(panelX + 16);
+        int hashW = textRenderer.getWidth("#") + 4;
+        hexField.setX(panelX + 16 + hashW);
         hexField.setY(hexY);
-        chromaButton.setX(panelX + 16 + 90 + 8);
+        chromaButton.setX(panelX + 16 + hashW + 80 + 8);
         chromaButton.setY(hexY);
         applyButton.setX(panelX + 20);
         applyButton.setY(buttonsY);
@@ -159,143 +180,180 @@ public class ColorPickerScreen extends Screen {
         int bottom = top + BOX_HEIGHT;
 
         context.fill(left, top, right, bottom, applyAlpha(0xCC000000, guiAlpha));
-        InventoryHudRenderer.drawButtonBorder(context, left - 1, top - 1, right + 1, bottom + 1, guiAlpha);
+        InventoryHudRenderer.drawChromaBorder(context, left - 1, top - 1, right + 1, bottom + 1, guiAlpha);
 
-        // Title
         String ttl = titleText + " Picker";
         int tw = textRenderer.getWidth(ttl);
         context.drawTextWithShadow(textRenderer, ttl, left + (BOX_WIDTH - tw) / 2, top + 6,
-                applyAlpha(0xFFFFFFFF, guiAlpha));
+                resolveTextColor(guiAlpha));
 
-        drawPicker(context, guiAlpha, mouseX, mouseY);
+        drawSVPicker(context, guiAlpha);
+        drawHueBar(context, guiAlpha);
+        drawPreview(context, guiAlpha);
         drawHexField(context, guiAlpha, mouseX, mouseY, delta);
-        chromaButton.active = true;
 
-        super.render(context, mouseX, mouseY, delta);
+        styleButton(context, chromaButton, guiAlpha, mouseX, mouseY);
+        styleButton(context, applyButton, guiAlpha, mouseX, mouseY);
+        styleButton(context, cancelButton, guiAlpha, mouseX, mouseY);
+    }
+
+    private void drawSVPicker(DrawContext context, float alpha) {
+        int x0 = svX();
+        int y0 = svY();
+
+        for (int x = 0; x < SV_SIZE; x++) {
+            float s = x / (float) (SV_SIZE - 1);
+            int topColor = applyAlpha(Color.HSBtoRGB(hue, s, 1.0f) | 0xFF000000, alpha);
+            int bottomColor = applyAlpha(0xFF000000, alpha);
+            context.fillGradient(x0 + x, y0, x0 + x + 1, y0 + SV_SIZE, topColor, bottomColor);
+        }
+
+        InventoryHudRenderer.drawButtonBorder(context, x0 - 1, y0 - 1, x0 + SV_SIZE + 1, y0 + SV_SIZE + 1, alpha);
+
+        int hx = x0 + (int) (sat * (SV_SIZE - 1));
+        int hy = y0 + (int) ((1.0f - val) * (SV_SIZE - 1));
+        context.fill(hx - 3, hy - 3, hx + 4, hy + 4, applyAlpha(0xFF000000, alpha));
+        context.fill(hx - 2, hy - 2, hx + 3, hy + 3, applyAlpha(0xFFFFFFFF, alpha));
+    }
+
+    private void drawHueBar(DrawContext context, float alpha) {
+        int x0 = hueBarX();
+        int y0 = hueBarY();
+
+        for (int y = 0; y < HUE_BAR_H; y++) {
+            float h = y / (float) (HUE_BAR_H - 1);
+            int c = applyAlpha(Color.HSBtoRGB(h, 1.0f, 1.0f) | 0xFF000000, alpha);
+            context.fill(x0, y0 + y, x0 + HUE_BAR_W, y0 + y + 1, c);
+        }
+
+        InventoryHudRenderer.drawButtonBorder(context, x0 - 1, y0 - 1, x0 + HUE_BAR_W + 1, y0 + HUE_BAR_H + 1, alpha);
+
+        int sy = y0 + (int) (hue * (HUE_BAR_H - 1));
+        context.fill(x0 - 2, sy - 1, x0 + HUE_BAR_W + 2, sy + 2, applyAlpha(0xFF000000, alpha));
+        context.fill(x0 - 1, sy, x0 + HUE_BAR_W + 1, sy + 1, applyAlpha(0xFFFFFFFF, alpha));
+    }
+
+    private void drawPreview(DrawContext context, float alpha) {
+        int px = hueBarX() + HUE_BAR_W + 10;
+        int py = hueBarY();
+        context.fill(px, py, px + PREVIEW_SIZE, py + PREVIEW_SIZE, applyAlpha(currentColor(), alpha));
+        InventoryHudRenderer.drawButtonBorder(context, px - 1, py - 1,
+                px + PREVIEW_SIZE + 1, py + PREVIEW_SIZE + 1, alpha);
     }
 
     private void drawHexField(DrawContext context, float alpha, int mouseX, int mouseY, float delta) {
-        int bg = applyAlpha(0xFF222222, alpha);
-        context.fill(hexField.getX() - 2, hexField.getY() - 2, hexField.getX() + hexField.getWidth() + 2, hexField.getY() + hexField.getHeight() + 2, bg);
-        hexField.setEditableColor(0xFFFFFFFF);
+        int fieldX = hexField.getX();
+        int fieldY = hexField.getY();
+        int fieldW = hexField.getWidth();
+        int fieldH = hexField.getHeight();
+
+        int hashW = textRenderer.getWidth("#") + 4;
+        context.fill(fieldX - hashW - 2, fieldY - 2,
+                fieldX + fieldW + 2, fieldY + fieldH + 2,
+                applyAlpha(0xFF000000, alpha));
+        InventoryHudRenderer.drawButtonBorder(context,
+                fieldX - hashW - 3, fieldY - 3,
+                fieldX + fieldW + 3, fieldY + fieldH + 3, alpha);
+
+        int hashColor = applyAlpha(0xFF888888, alpha);
+        context.drawTextWithShadow(textRenderer, "#",
+                fieldX - hashW + 2,
+                fieldY + (fieldH - textRenderer.fontHeight) / 2,
+                hashColor);
+
         hexField.render(context, mouseX, mouseY, delta);
-        // Chroma toggle label
-        int cbx = chromaButton.getX();
-        int cby = chromaButton.getY();
-        int cbw = chromaButton.getWidth();
-        int cbh = chromaButton.getHeight();
-        boolean hover = mouseX >= cbx && mouseX <= cbx + cbw && mouseY >= cby && mouseY <= cby + cbh;
-        int fill = applyAlpha(hover ? 0xFF666666 : 0xFF555555, alpha);
-        context.fill(cbx, cby, cbx + cbw, cby + cbh, fill);
-        InventoryHudRenderer.drawButtonBorder(context, cbx - 1, cby - 1, cbx + cbw + 1, cby + cbh + 1, alpha);
-        int tw = textRenderer.getWidth(chromaButton.getMessage());
-        int tx = cbx + (cbw - tw) / 2;
-        int ty = cby + (cbh - textRenderer.fontHeight) / 2;
-        context.drawTextWithShadow(textRenderer, chromaButton.getMessage(), tx, ty, applyAlpha(0xFFFFFFFF, alpha));
     }
 
-    private void drawPicker(DrawContext context, float alpha, int mouseX, int mouseY) {
-        int wheelX = pickerX();
-        int wheelY = pickerY();
-        int sliderX = wheelX + WHEEL_SIZE + 8;
-        int sliderY = wheelY;
+    private void styleButton(DrawContext context, ButtonWidget button, float alpha, int mouseX, int mouseY) {
+        int bx = button.getX();
+        int by = button.getY();
+        int bw = button.getWidth();
+        int bh = button.getHeight();
+        boolean hover = mouseX >= bx && mouseX <= bx + bw && mouseY >= by && mouseY <= by + bh;
+        int fill = applyAlpha(hover ? 0xFF666666 : 0xFF555555, alpha);
+        context.fill(bx, by, bx + bw, by + bh, fill);
+        InventoryHudRenderer.drawButtonBorder(context, bx - 1, by - 1, bx + bw + 1, by + bh + 1, alpha);
+        String label = button.getMessage().getString();
+        int textWidth = textRenderer.getWidth(label);
+        int tx = bx + (bw - textWidth) / 2;
+        int ty = by + (bh - textRenderer.fontHeight) / 2;
+        context.drawTextWithShadow(textRenderer, label, tx, ty, resolveTextColor(alpha));
+    }
 
-        context.drawTexture(RenderPipelines.GUI_TEXTURED, ColorWheel.ID, wheelX, wheelY,
-                0f, 0f, WHEEL_SIZE, WHEEL_SIZE, WHEEL_SIZE, WHEEL_SIZE);
-
-        for (int i = 0; i < SLIDER_H; i++) {
-            float v = 1f - (i / (float) SLIDER_H);
-            int c = applyAlpha(applyVToCurrent(v), alpha);
-            context.fill(sliderX, sliderY + i, sliderX + SLIDER_W, sliderY + i + 1, c);
-        }
-        InventoryHudRenderer.drawButtonBorder(context, sliderX - 1, sliderY - 1, sliderX + SLIDER_W + 1, sliderY + SLIDER_H + 1, alpha);
-
-        // Wheel handle
-        int cx = wheelX + WHEEL_SIZE / 2;
-        int cy = wheelY + WHEEL_SIZE / 2;
-        float r = (WHEEL_SIZE / 2f) * sat;
-        double angle = hue * 2 * Math.PI;
-        int hx = cx + (int) (Math.cos(angle) * r);
-        int hy = cy + (int) (Math.sin(angle) * r);
-        // black outline + white fill for visibility
-        context.fill(hx - 3, hy - 3, hx + 4, hy + 4, applyAlpha(0xFF000000, alpha));
-        context.fill(hx - 2, hy - 2, hx + 3, hy + 3, applyAlpha(0xFFFFFFFF, alpha));
-
-        // Slider handle
-        int sy = sliderY + (int) ((1f - val) * SLIDER_H);
-        context.fill(sliderX - 2, sy - 1, sliderX + SLIDER_W + 2, sy + 2, applyAlpha(0xFF000000, alpha));
-        context.fill(sliderX - 1, sy, sliderX + SLIDER_W + 1, sy + 1, applyAlpha(0xFFFFFFFF, alpha));
+    private int resolveTextColor(float alpha) {
+        int base = (RenderConfig.isButtonTextChromaEnabled())
+                ? RenderConfig.chromaColor((System.currentTimeMillis() % 4000) / 4000f)
+                : RenderConfig.getButtonTextColor();
+        return applyAlpha(base, alpha);
     }
 
     @Override
     public boolean mouseClicked(Click click, boolean ignoresInput) {
         double mx = click.x();
         double my = click.y();
-        if (click.button() == 0 && mx >= panelX && mx <= panelX + BOX_WIDTH && my >= panelY && my <= panelY + DRAG_BAR_HEIGHT) {
-            dragging = true;
-            dragStartMouseX = mx;
-            dragStartMouseY = my;
-            dragStartPanelX = panelX;
-            dragStartPanelY = panelY;
-            return true;
-        }
         if (click.button() == 0) {
-            int wheelX = pickerX();
-            int wheelY = pickerY();
-            int sliderX = wheelX + WHEEL_SIZE + 8;
-            int sliderY = wheelY;
-            if (mx >= wheelX && mx <= wheelX + WHEEL_SIZE && my >= wheelY && my <= wheelY + WHEEL_SIZE) {
-                draggingWheel = true;
-                updateHueSat(mx - wheelX, my - wheelY);
-                hexField.setText(colorToHex(currentColor()));
+            if (mx >= panelX && mx <= panelX + BOX_WIDTH && my >= panelY && my <= panelY + DRAG_BAR_HEIGHT) {
+                dragging = true;
+                dragStartMouseX = mx;
+                dragStartMouseY = my;
+                dragStartPanelX = panelX;
+                dragStartPanelY = panelY;
                 return true;
             }
-            if (mx >= sliderX && mx <= sliderX + SLIDER_W && my >= sliderY && my <= sliderY + SLIDER_H) {
-                draggingValue = true;
-                updateValue(my - sliderY);
-                hexField.setText(colorToHex(currentColor()));
+            int sx = svX(), sy = svY();
+            if (mx >= sx && mx <= sx + SV_SIZE && my >= sy && my <= sy + SV_SIZE) {
+                draggingSV = true;
+                updateSV(mx - sx, my - sy);
+                updateHexFromColor();
                 return true;
             }
-            if (hexField.mouseClicked(click, ignoresInput)) {
-                syncFromHex();
+            int hbx = hueBarX(), hby = hueBarY();
+            if (mx >= hbx && mx <= hbx + HUE_BAR_W && my >= hby && my <= hby + HUE_BAR_H) {
+                draggingHue = true;
+                updateHue(my - hby);
+                updateHexFromColor();
                 return true;
             }
-            if (mx >= chromaButton.getX() && mx <= chromaButton.getX() + chromaButton.getWidth()
-                    && my >= chromaButton.getY() && my <= chromaButton.getY() + chromaButton.getHeight()) {
+            if (hitButton(chromaButton, mx, my)) {
                 toggleChroma();
+                return true;
+            }
+            if (hitButton(applyButton, mx, my)) {
+                applyAndClose();
+                return true;
+            }
+            if (hitButton(cancelButton, mx, my)) {
+                cancelAndClose();
                 return true;
             }
         }
         return super.mouseClicked(click, ignoresInput);
     }
 
+    private boolean hitButton(ButtonWidget button, double mx, double my) {
+        return mx >= button.getX() && mx <= button.getX() + button.getWidth()
+                && my >= button.getY() && my <= button.getY() + button.getHeight();
+    }
+
     @Override
     public boolean mouseDragged(Click click, double deltaX, double deltaY) {
-        if (dragging && click.button() == 0) {
-            double mx = click.x();
-            double my = click.y();
-            int newX = dragStartPanelX + (int) (mx - dragStartMouseX);
-            int newY = dragStartPanelY + (int) (my - dragStartMouseY);
-            newX = clamp(newX, 0, width - BOX_WIDTH);
-            newY = clamp(newY, 0, height - BOX_HEIGHT);
-            panelX = newX;
-            panelY = newY;
-            repositionWidgets();
-            return true;
-        }
         if (click.button() == 0) {
-            int wheelX = pickerX();
-            int wheelY = pickerY();
-            int sliderX = wheelX + WHEEL_SIZE + 8;
-            int sliderY = wheelY;
-            if (draggingWheel || (click.x() >= wheelX && click.x() <= wheelX + WHEEL_SIZE && click.y() >= wheelY && click.y() <= wheelY + WHEEL_SIZE)) {
-                updateHueSat(click.x() - wheelX, click.y() - wheelY);
-                hexField.setText(colorToHex(currentColor()));
+            if (dragging) {
+                int newX = dragStartPanelX + (int) (click.x() - dragStartMouseX);
+                int newY = dragStartPanelY + (int) (click.y() - dragStartMouseY);
+                panelX = clamp(newX, 0, width - BOX_WIDTH);
+                panelY = clamp(newY, 0, height - BOX_HEIGHT);
+                repositionWidgets();
                 return true;
             }
-            if (draggingValue || (click.x() >= sliderX && click.x() <= sliderX + SLIDER_W && click.y() >= sliderY && click.y() <= sliderY + SLIDER_H)) {
-                updateValue(click.y() - sliderY);
-                hexField.setText(colorToHex(currentColor()));
+            if (draggingSV) {
+                updateSV(click.x() - svX(), click.y() - svY());
+                updateHexFromColor();
+                return true;
+            }
+            if (draggingHue) {
+                updateHue(click.y() - hueBarY());
+                updateHexFromColor();
                 return true;
             }
         }
@@ -304,85 +362,43 @@ public class ColorPickerScreen extends Screen {
 
     @Override
     public boolean mouseReleased(Click click) {
-        if (dragging && click.button() == 0) {
+        if (click.button() == 0) {
+            boolean wasDragging = dragging || draggingSV || draggingHue;
             dragging = false;
-            draggingWheel = false;
-            draggingValue = false;
-            return true;
-        }
-        if ((draggingWheel || draggingValue) && click.button() == 0) {
-            draggingWheel = false;
-            draggingValue = false;
-            return true;
+            draggingSV = false;
+            draggingHue = false;
+            if (wasDragging) return true;
         }
         return super.mouseReleased(click);
     }
 
-    @Override
-    public boolean keyPressed(net.minecraft.client.input.KeyInput input) {
-        if (hexField.keyPressed(input)) {
-            syncFromHex();
-            return true;
-        }
-        return super.keyPressed(input);
+    private void updateSV(double localX, double localY) {
+        sat = (float) Math.max(0, Math.min(1, localX / (SV_SIZE - 1)));
+        val = (float) Math.max(0, Math.min(1, 1.0 - localY / (SV_SIZE - 1)));
     }
 
-    @Override
-    public boolean charTyped(net.minecraft.client.input.CharInput input) {
-        if (hexField.charTyped(input)) {
-            syncFromHex();
-            return true;
-        }
-        return super.charTyped(input);
-    }
-
-    private void updateHueSat(double localX, double localY) {
-        double cx = WHEEL_SIZE / 2.0;
-        double cy = WHEEL_SIZE / 2.0;
-        double dx = localX - cx;
-        double dy = localY - cy;
-        double dist = Math.sqrt(dx * dx + dy * dy);
-        double maxR = WHEEL_SIZE / 2.0;
-        double clampedDist = Math.min(dist, maxR);
-        sat = (float) (clampedDist / maxR);
-        hue = (float) ((Math.atan2(dy, dx) + Math.PI) / (2 * Math.PI));
-    }
-
-    private void updateValue(double sliderLocalY) {
-        double t = Math.max(0, Math.min(sliderLocalY, SLIDER_H));
-        val = (float) (1.0 - t / SLIDER_H);
-    }
-
-    private int applyVToCurrent(float value) {
-        return Color.HSBtoRGB(hue, sat, value) | 0xFF000000;
+    private void updateHue(double localY) {
+        hue = (float) Math.max(0, Math.min(1, localY / (HUE_BAR_H - 1)));
     }
 
     private int currentColor() {
-        return applyVToCurrent(val);
+        return Color.HSBtoRGB(hue, sat, val) | 0xFF000000;
     }
 
-    private void syncFromHex() {
+    /** Update hex field text from current HSV without triggering the change listener loop. */
+    private void updateHexFromColor() {
+        updatingHex = true;
+        hexField.setText(colorToHex(currentColor()));
+        updatingHex = false;
+    }
+
+    /** Parse hex field text and update HSV. Does NOT write back to hexField. */
+    private void syncHsvFromHex() {
         int parsed = parseHex(hexField.getText(), currentColor());
-        setFromColor(parsed);
-    }
-
-    private void setFromColor(int color) {
-        float[] hsv = Color.RGBtoHSB((color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, null);
+        float[] hsv = Color.RGBtoHSB((parsed >> 16) & 0xFF, (parsed >> 8) & 0xFF, parsed & 0xFF, null);
         hue = hsv[0];
         sat = hsv[1];
         val = hsv[2];
-        hexField.setText(colorToHex(color));
-    }
-
-    private int applyAlpha(int color, float alpha) {
-        int a = Math.round(((color >>> 24) & 0xFF) * alpha);
-        return (a << 24) | (color & 0x00FFFFFF);
-    }
-
-    private int clamp(int v, int min, int max) { return Math.max(min, Math.min(max, v)); }
-
-    private String colorToHex(int color) {
-        return String.format("#%06X", color & 0xFFFFFF);
     }
 
     private void toggleChroma() {
@@ -394,6 +410,17 @@ public class ColorPickerScreen extends Screen {
         return chromaEnabled ? "Chroma: ON" : "Chroma: OFF";
     }
 
+    private int applyAlpha(int color, float alpha) {
+        int a = Math.round(((color >>> 24) & 0xFF) * alpha);
+        return (a << 24) | (color & 0x00FFFFFF);
+    }
+
+    private int clamp(int v, int min, int max) { return Math.max(min, Math.min(max, v)); }
+
+    private String colorToHex(int color) {
+        return String.format("%06X", color & 0xFFFFFF);
+    }
+
     private int parseHex(String text, int fallback) {
         if (text == null) return fallback;
         String s = text.trim();
@@ -403,41 +430,10 @@ public class ColorPickerScreen extends Screen {
         }
         if (s.length() != 6) return fallback;
         try {
-            int val = Integer.parseInt(s, 16);
-            return 0xFF000000 | val;
+            int v = Integer.parseInt(s, 16);
+            return 0xFF000000 | v;
         } catch (NumberFormatException e) {
             return fallback;
-        }
-    }
-
-    private static class ColorWheel {
-        private static NativeImageBackedTexture TEX;
-        private static Identifier ID;
-
-        static void ensure() {
-            if (TEX != null && ID != null) return;
-            NativeImage image = new NativeImage(WHEEL_SIZE, WHEEL_SIZE, true);
-            double cx = WHEEL_SIZE / 2.0;
-            double cy = WHEEL_SIZE / 2.0;
-            double maxR = WHEEL_SIZE / 2.0 - 1;
-            for (int y = 0; y < WHEEL_SIZE; y++) {
-                for (int x = 0; x < WHEEL_SIZE; x++) {
-                    double dx = x - cx;
-                    double dy = y - cy;
-                    double dist = Math.sqrt(dx * dx + dy * dy);
-                    if (dist > maxR) {
-                        image.setColor(x, y, 0x00000000);
-                        continue;
-                    }
-                    float sat = (float) (dist / maxR);
-                    float hue = (float) ((Math.atan2(dy, dx) + Math.PI) / (2 * Math.PI));
-                    int rgb = Color.HSBtoRGB(hue, sat, 1.0f);
-                    image.setColor(x, y, 0xFF000000 | (rgb & 0xFFFFFF));
-                }
-            }
-            TEX = new NativeImageBackedTexture(() -> "floydaddons_colorwheel", image);
-            ID = Identifier.of(FloydAddonsClient.MOD_ID, "colorwheel");
-            MinecraftClient.getInstance().getTextureManager().registerTexture(ID, TEX);
         }
     }
 }

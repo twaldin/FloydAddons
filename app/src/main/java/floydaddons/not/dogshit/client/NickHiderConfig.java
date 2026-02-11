@@ -2,6 +2,7 @@ package floydaddons.not.dogshit.client;
 
 import java.nio.file.Path;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 public final class NickHiderConfig {
@@ -34,4 +35,29 @@ public final class NickHiderConfig {
     /** Convenience: delegates to the unified config. */
     public static void save() { FloydAddonsConfig.save(); }
     public static void loadNameMappings() { FloydAddonsConfig.loadNameMappings(); }
+
+    public static void addNameMapping(String ign, String fakeName) {
+        Map<String, String> mutable = new HashMap<>(nameMappings);
+        mutable.put(ign, fakeName);
+        nameMappings = Map.copyOf(mutable);
+    }
+
+    public static boolean removeNameMapping(String ign) {
+        String keyToRemove = null;
+        for (String key : nameMappings.keySet()) {
+            if (key.equalsIgnoreCase(ign)) {
+                keyToRemove = key;
+                break;
+            }
+        }
+        if (keyToRemove == null) return false;
+        Map<String, String> mutable = new HashMap<>(nameMappings);
+        mutable.remove(keyToRemove);
+        nameMappings = Map.copyOf(mutable);
+        return true;
+    }
+
+    public static void clearNameMappings() {
+        nameMappings = Collections.emptyMap();
+    }
 }
