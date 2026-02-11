@@ -144,7 +144,7 @@ public final class ScoreboardHudRenderer implements HudRenderCallback {
         // Title (chroma colored, centered)
         int titleX = x + (boxWidth - titleWidth) / 2;
         int titleY = y + TITLE_PADDING;
-        context.drawTextWithShadow(textRenderer, title, titleX, titleY, chromaColor(0f));
+        context.drawTextWithShadow(textRenderer, title, titleX, titleY, uiTextColor(0f));
 
         // Entry lines (directly after title, no divider)
         int lineY = y + titleBarHeight;
@@ -160,7 +160,7 @@ public final class ScoreboardHudRenderer implements HudRenderCallback {
         // Footer: "FloydAddons" in chroma, centered
         int footerX = x + (boxWidth - footerWidth) / 2;
         int footerY = lineY + TITLE_PADDING;
-        context.drawTextWithShadow(textRenderer, footerText, footerX, footerY, chromaColor(0.5f));
+        context.drawTextWithShadow(textRenderer, footerText, footerX, footerY, uiTextColor(0.5f));
     }
 
     public static int getLastWidth() { return lastWidth; }
@@ -168,7 +168,8 @@ public final class ScoreboardHudRenderer implements HudRenderCallback {
 
     private static int clamp(int v, int min, int max) { return Math.max(min, Math.min(max, v)); }
 
-    private static int chromaColor(float offset) {
+    private static int uiTextColor(float offset) {
+        if (!RenderConfig.isGuiChromaEnabled()) return RenderConfig.getButtonTextColor();
         double time = (System.currentTimeMillis() % 4000) / 4000.0;
         float hue = (float) ((time + offset) % 1.0);
         int rgb = java.awt.Color.HSBtoRGB(hue, 1.0f, 1.0f);

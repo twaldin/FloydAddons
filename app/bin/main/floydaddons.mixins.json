@@ -15,7 +15,8 @@
     "XraySodiumFaceCullMixin",
     "XraySodiumFluidAlphaMixin",
     "XrayChunkOcclusionMixin",
-    "XrayLightmapMixin"
+    "XrayLightmapMixin",
+    "TitleScreenBackgroundMixin"
   ],
   "injectors": {
     "defaultRequire": 1

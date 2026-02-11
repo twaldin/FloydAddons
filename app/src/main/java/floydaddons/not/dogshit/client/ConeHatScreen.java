@@ -20,13 +20,14 @@ public class ConeHatScreen extends Screen {
     private ConfigSlider radiusSlider;
     private ConfigSlider yOffsetSlider;
     private ConfigSlider rotationSlider;
+    private ConfigSlider rotationSpeedSlider;
     private ButtonWidget openFolderButton;
     private ButtonWidget doneButton;
 
     private static final int CONTROLS_WIDTH = 310;
     private static final int PREVIEW_WIDTH = 140;
     private static final int BOX_WIDTH = CONTROLS_WIDTH + PREVIEW_WIDTH;
-    private static final int BOX_HEIGHT = 220;
+    private static final int BOX_HEIGHT = 246;
     private static final int DRAG_BAR_HEIGHT = 18;
     private static final long FADE_DURATION_MS = 90;
     private static final int ROW_HEIGHT = 20;
@@ -37,6 +38,8 @@ public class ConeHatScreen extends Screen {
     private static final int FULL_W = SLIDER_W + INPUT_GAP + INPUT_W; // 220
     private static final int DD_W = 148;
     private static final int FOLDER_W = FULL_W - DD_W - INPUT_GAP; // 68
+    private static final int SLIDER_COUNT = 5;
+    private static final int DROPDOWN_ROW = SLIDER_COUNT; // follows sliders
 
     private int panelX, panelY;
     private boolean dragging = false;
@@ -55,7 +58,7 @@ public class ConeHatScreen extends Screen {
     private static final int DROPDOWN_MAX_VISIBLE = 5;
 
     // Text input state
-    private int editingSlider = -1; // 0=height, 1=radius, 2=yOffset, 3=rotation
+    private int editingSlider = -1; // 0=height, 1=radius, 2=yOffset, 3=rotation, 4=spin speed
     private String editBuffer = "";
 
     public ConeHatScreen(Screen parent) {
@@ -119,11 +122,21 @@ public class ConeHatScreen extends Screen {
             }
         };
 
-        // Row 4: Image dropdown (DD_W) + Open folder (FOLDER_W) side by side
+        // Row 4: Rotation speed slider
+        rotationSpeedSlider = new ConfigSlider(le, rowY(4), SLIDER_W, ROW_HEIGHT,
+                Text.literal(rotationSpeedLabel()), rotationSpeedToSlider(RenderConfig.getConeHatRotationSpeed())) {
+            @Override protected void updateMessage() { setMessage(Text.literal(rotationSpeedLabel())); }
+            @Override protected void applyValue() {
+                RenderConfig.setConeHatRotationSpeed(sliderToRotationSpeed(this.value));
+                RenderConfig.save();
+            }
+        };
+
+        // Row 5: Image dropdown (DD_W) + Open folder (FOLDER_W) side by side
         openFolderButton = ButtonWidget.builder(Text.literal("Open folder"), b -> {
             var dir = ConeHatManager.ensureDir();
             openPath(dir);
-        }).dimensions(le + DD_W + INPUT_GAP, rowY(4), FOLDER_W, ROW_HEIGHT).build();
+        }).dimensions(le + DD_W + INPUT_GAP, rowY(DROPDOWN_ROW), FOLDER_W, ROW_HEIGHT).build();
 
         // Done button centered in controls area
         doneButton = ButtonWidget.builder(Text.literal("Done"), b -> close())
@@ -134,6 +147,7 @@ public class ConeHatScreen extends Screen {
         addDrawableChild(radiusSlider);
         addDrawableChild(yOffsetSlider);
         addDrawableChild(rotationSlider);
+        addDrawableChild(rotationSpeedSlider);
         addDrawableChild(openFolderButton);
         addDrawableChild(doneButton);
     }
@@ -163,6 +177,11 @@ public class ConeHatScreen extends Screen {
     private double rotationToSlider(float v) { return v / 360.0; }
     private float sliderToRotation(double s) { return (float)(s * 360.0); }
 
+    // Slider conversion: rotation speed 0 - 360 deg/sec
+    private String rotationSpeedLabel() { return "Spin: " + String.format("%.1f", RenderConfig.getConeHatRotationSpeed()) + "\u00B0/s"; }
+    private double rotationSpeedToSlider(float v) { return v / 360.0; }
+    private float sliderToRotationSpeed(double s) { return (float)(s * 360.0); }
+
     private String currentImageLabel() {
         String sel = RenderConfig.getSelectedConeImage();
         if (sel == null || sel.isEmpty()) return "Default (Floyd.png)";
@@ -177,6 +196,7 @@ public class ConeHatScreen extends Screen {
             case 1 -> String.format("%.2f", RenderConfig.getConeHatRadius());
             case 2 -> String.format("%.2f", RenderConfig.getConeHatYOffset());
             case 3 -> String.valueOf(Math.round(RenderConfig.getConeHatRotation()));
+            case 4 -> String.format("%.1f", RenderConfig.getConeHatRotationSpeed());
             default -> "";
         };
     }
@@ -209,6 +229,10 @@ public class ConeHatScreen extends Screen {
                 case 3 -> {
                     RenderConfig.setConeHatRotation(val);
                     rotationSlider.setSliderValue(rotationToSlider(RenderConfig.getConeHatRotation()));
+                }
+                case 4 -> {
+                    RenderConfig.setConeHatRotationSpeed(val);
+                    rotationSpeedSlider.setSliderValue(rotationSpeedToSlider(RenderConfig.getConeHatRotationSpeed()));
                 }
             }
             RenderConfig.save();
@@ -249,7 +273,7 @@ public class ConeHatScreen extends Screen {
         // Handle dropdown list clicks
         if (dropdownOpen && click.button() == 0) {
             int ddX = leftEdge();
-            int ddTop = rowY(4) + ROW_HEIGHT + 2;
+            int ddTop = rowY(DROPDOWN_ROW) + ROW_HEIGHT + 2;
             int ddWidth = DD_W;
             int visibleCount = Math.min(availableImages.size(), DROPDOWN_MAX_VISIBLE);
             int ddHeight = Math.max(DROPDOWN_ROW_HEIGHT, visibleCount * DROPDOWN_ROW_HEIGHT);
@@ -271,7 +295,7 @@ public class ConeHatScreen extends Screen {
         // Handle input box clicks
         if (click.button() == 0) {
             int inputX = leftEdge() + SLIDER_W + INPUT_GAP;
-            for (int i = 0; i < 4; i++) {
+            for (int i = 0; i < SLIDER_COUNT; i++) {
                 int inputY = rowY(i);
                 if (mx >= inputX && mx <= inputX + INPUT_W && my >= inputY && my <= inputY + ROW_HEIGHT) {
                     startEditing(i);
@@ -283,7 +307,7 @@ public class ConeHatScreen extends Screen {
         // Handle dropdown button click
         if (click.button() == 0) {
             int ddBtnX = leftEdge();
-            int ddBtnY = rowY(4);
+            int ddBtnY = rowY(DROPDOWN_ROW);
             if (mx >= ddBtnX && mx <= ddBtnX + DD_W && my >= ddBtnY && my <= ddBtnY + ROW_HEIGHT) {
                 refreshImageList();
                 dropdownOpen = !dropdownOpen;
@@ -344,7 +368,7 @@ public class ConeHatScreen extends Screen {
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
         if (dropdownOpen && availableImages.size() > DROPDOWN_MAX_VISIBLE) {
             int ddX = leftEdge();
-            int ddTop = rowY(4) + ROW_HEIGHT + 2;
+            int ddTop = rowY(DROPDOWN_ROW) + ROW_HEIGHT + 2;
             int ddWidth = DD_W;
             int ddHeight = DROPDOWN_MAX_VISIBLE * DROPDOWN_ROW_HEIGHT;
             if (mouseX >= ddX && mouseX <= ddX + ddWidth && mouseY >= ddTop && mouseY <= ddTop + ddHeight) {
@@ -386,7 +410,8 @@ public class ConeHatScreen extends Screen {
         radiusSlider.setX(le);   radiusSlider.setY(rowY(1));
         yOffsetSlider.setX(le);  yOffsetSlider.setY(rowY(2));
         rotationSlider.setX(le); rotationSlider.setY(rowY(3));
-        openFolderButton.setX(le + DD_W + INPUT_GAP); openFolderButton.setY(rowY(4));
+        rotationSpeedSlider.setX(le); rotationSpeedSlider.setY(rowY(4));
+        openFolderButton.setX(le + DD_W + INPUT_GAP); openFolderButton.setY(rowY(DROPDOWN_ROW));
         doneButton.setX(panelX + (CONTROLS_WIDTH - 100) / 2); doneButton.setY(panelY + BOX_HEIGHT - 30);
     }
 
@@ -439,8 +464,10 @@ public class ConeHatScreen extends Screen {
                 (float) yOffsetToSlider(RenderConfig.getConeHatYOffset()));
         renderSliderRow(context, 3, rotationSlider, guiAlpha, mouseX, mouseY,
                 (float) rotationToSlider(RenderConfig.getConeHatRotation()));
+        renderSliderRow(context, 4, rotationSpeedSlider, guiAlpha, mouseX, mouseY,
+                (float) rotationSpeedToSlider(RenderConfig.getConeHatRotationSpeed()));
 
-        // Row 4: dropdown button + open folder button (side by side)
+        // Row 5: dropdown button + open folder button (side by side)
         renderDropdownButton(context, mouseX, mouseY, guiAlpha);
         styleButton(context, openFolderButton, guiAlpha, mouseX, mouseY);
 
@@ -475,8 +502,15 @@ public class ConeHatScreen extends Screen {
             int prevY2 = panelY + BOX_HEIGHT - 35;
             int prevCenterX = (prevX1 + prevX2) / 2;
             int prevCenterY = prevY2 - 10;
-            InventoryScreen.drawEntity(context, prevX1, prevY1, prevX2, prevY2,
-                    35, 0.0625f, prevCenterX, prevCenterY, client.player);
+
+            // mimic inventory: rotate model with mouse
+            float relX = prevCenterX - mouseX;
+            float relY = prevCenterY - mouseY;
+            InventoryScreen.drawEntity(context,
+                    prevX1, prevY1, prevX2, prevY2,
+                    35, 0.0625f,
+                    relX, relY,
+                    client.player);
         }
     }
 
@@ -536,7 +570,7 @@ public class ConeHatScreen extends Screen {
 
     private void renderDropdownButton(DrawContext context, int mouseX, int mouseY, float guiAlpha) {
         int ddX = leftEdge();
-        int ddY = rowY(4);
+        int ddY = rowY(DROPDOWN_ROW);
         int ddW = DD_W;
         int ddH = ROW_HEIGHT;
 
@@ -560,7 +594,7 @@ public class ConeHatScreen extends Screen {
     private void renderDropdownList(DrawContext context, int mouseX, int mouseY, float guiAlpha) {
         int ddX = leftEdge();
         int ddW = DD_W;
-        int listTop = rowY(4) + ROW_HEIGHT + 2;
+        int listTop = rowY(DROPDOWN_ROW) + ROW_HEIGHT + 2;
         int chroma = applyAlpha(chromaColor((System.currentTimeMillis() % 4000) / 4000f), guiAlpha);
 
         if (!availableImages.isEmpty()) {
@@ -648,10 +682,8 @@ public class ConeHatScreen extends Screen {
     }
 
     private int chromaColor(float offset) {
-        double time = (System.currentTimeMillis() % 4000) / 4000.0;
-        float hue = (float) ((time + offset) % 1.0);
-        int rgb = java.awt.Color.HSBtoRGB(hue, 1.0f, 1.0f);
-        return 0xFF000000 | (rgb & 0xFFFFFF);
+        if (!(RenderConfig.isButtonTextChromaEnabled() || RenderConfig.isGuiChromaEnabled())) return RenderConfig.getButtonTextColor();
+        return RenderConfig.chromaColor(offset);
     }
 
     private static void openPath(java.nio.file.Path path) {

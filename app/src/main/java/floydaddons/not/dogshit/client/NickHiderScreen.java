@@ -139,11 +139,11 @@ public class NickHiderScreen extends Screen {
         context.fill(left, top, right, bottom, baseColor);
 
         // Chroma outline similar to main screen
-        drawChromaBorder(context, left - 1, top - 1, right + 1, bottom + 1, guiAlpha);
+        InventoryHudRenderer.drawChromaBorder(context, left - 1, top - 1, right + 1, bottom + 1, guiAlpha);
 
         // Dynamic chroma text and outlines for controls
-        int chromaFast = applyAlpha(chromaColor((System.currentTimeMillis() % 4000) / 4000f), guiAlpha);
-        int chromaSlow = applyAlpha(chromaColor(((System.currentTimeMillis() % 8000) / 8000f)), guiAlpha);
+        int chromaFast = applyAlpha(resolveTextColor((System.currentTimeMillis() % 4000) / 4000f), guiAlpha);
+        int chromaSlow = applyAlpha(resolveTextColor(((System.currentTimeMillis() % 8000) / 8000f)), guiAlpha);
 
         // Nick field custom background (solid black) + chroma outline, centered text
         int fieldFill = 0xFF000000;
@@ -244,7 +244,7 @@ public class NickHiderScreen extends Screen {
 
     private void renderTextField(DrawContext context, TextFieldWidget field, int fillColor, float guiAlpha, int mouseX, int mouseY, float delta) {
         context.fill(field.getX(), field.getY(), field.getX() + field.getWidth(), field.getY() + field.getHeight(), applyAlpha(fillColor, guiAlpha));
-        drawChromaBorder(context,
+        InventoryHudRenderer.drawButtonBorder(context,
                 field.getX() - 1, field.getY() - 1,
                 field.getX() + field.getWidth() + 1,
                 field.getY() + field.getHeight() + 1,
@@ -263,43 +263,22 @@ public class NickHiderScreen extends Screen {
         boolean hover = mouseX >= bx && mouseX <= bx + bw && mouseY >= by && mouseY <= by + bh;
         int fill = applyAlpha(hover ? 0xFF666666 : 0xFF555555, alpha);
         context.fill(bx, by, bx + bw, by + bh, fill);
-        drawChromaBorder(context, bx - 1, by - 1, bx + bw + 1, by + bh + 1, alpha);
+        InventoryHudRenderer.drawButtonBorder(context, bx - 1, by - 1, bx + bw + 1, by + bh + 1, alpha);
 
         // Draw centered text with chroma color
         String label = button.getMessage().getString();
         int textWidth = textRenderer.getWidth(label);
         int tx = bx + (bw - textWidth) / 2;
         int ty = by + (bh - textRenderer.fontHeight) / 2;
-        context.drawTextWithShadow(textRenderer, label, tx, ty, chromaColor);
+        context.drawTextWithShadow(textRenderer, label, tx, ty, resolveTextColor((System.currentTimeMillis() % 4000) / 4000f));
     }
 
-    private void drawChromaBorder(DrawContext context, int left, int top, int right, int bottom, float alpha) {
-        int width = right - left;
-        int height = bottom - top;
-        int perimeter = width * 2 + height * 2;
-        if (perimeter <= 0) return;
-        int pos = 0;
-        for (int x = 0; x < width; x++, pos++) {
-            int c = applyAlpha(chromaColor(pos / (float) perimeter), alpha);
-            context.fill(left + x, top, left + x + 1, top + 1, c);
-        }
-        for (int y = 0; y < height; y++, pos++) {
-            int c = applyAlpha(chromaColor(pos / (float) perimeter), alpha);
-            context.fill(right - 1, top + y, right, top + y + 1, c);
-        }
-        for (int x = width - 1; x >= 0; x--, pos++) {
-            int c = applyAlpha(chromaColor(pos / (float) perimeter), alpha);
-            context.fill(left + x, bottom - 1, left + x + 1, bottom, c);
-        }
-        for (int y = height - 1; y >= 0; y--, pos++) {
-            int c = applyAlpha(chromaColor(pos / (float) perimeter), alpha);
-            context.fill(left, top + y, left + 1, top + y + 1, c);
-        }
-    }
-
-    private int applyAlpha(int color, float alpha) {
-        int a = Math.round(((color >>> 24) & 0xFF) * alpha);
-        return (a << 24) | (color & 0x00FFFFFF);
+    private int resolveTextColor(float offset) {
+        if (!(RenderConfig.isButtonTextChromaEnabled() || RenderConfig.isGuiChromaEnabled())) return RenderConfig.getButtonTextColor();
+        double time = (System.currentTimeMillis() % 4000) / 4000.0;
+        float hue = (float) ((time + offset) % 1.0);
+        int rgb = java.awt.Color.HSBtoRGB(hue, 1.0f, 1.0f);
+        return 0xFF000000 | (rgb & 0xFFFFFF);
     }
 
     private static void openFileInEditor(java.nio.file.Path path) {
@@ -324,9 +303,12 @@ public class NickHiderScreen extends Screen {
     }
 
     private int chromaColor(float offset) {
-        double time = (System.currentTimeMillis() % 4000) / 4000.0;
-        float hue = (float) ((time + offset) % 1.0);
-        int rgb = java.awt.Color.HSBtoRGB(hue, 1.0f, 1.0f);
-        return 0xFF000000 | (rgb & 0xFFFFFF);
+        if (!(RenderConfig.isButtonTextChromaEnabled() || RenderConfig.isGuiChromaEnabled())) return RenderConfig.getButtonTextColor();
+        return RenderConfig.chromaColor(offset);
+    }
+
+    private int applyAlpha(int color, float alpha) {
+        int a = Math.round(((color >>> 24) & 0xFF) * alpha);
+        return (a << 24) | (color & 0x00FFFFFF);
     }
 }

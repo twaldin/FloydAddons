@@ -20,6 +20,14 @@ public final class RenderConfig {
     private static float coneHatRadius = 0.25f;
     private static float coneHatYOffset = -0.5f;
     private static float coneHatRotation = 0.0f;
+    private static float coneHatRotationSpeed = 0.0f;
+    private static boolean guiChromaEnabled = true;
+    private static boolean buttonTextChromaEnabled = false;
+    private static boolean buttonBorderChromaEnabled = false;
+    private static boolean guiBorderChromaEnabled = false;
+    private static int guiBorderColor = 0xFFFFFFFF;
+    private static int buttonBorderColor = 0xFFFFFFFF;
+    private static int buttonTextColor = 0xFFFFFFFF;
     private static String selectedConeImage = "";
     private static boolean customScoreboardEnabled = false;
     private static int customScoreboardX = -1;
@@ -60,6 +68,30 @@ public final class RenderConfig {
 
     public static float getConeHatRotation() { return coneHatRotation; }
     public static void setConeHatRotation(float v) { coneHatRotation = ((v % 360f) + 360f) % 360f; }
+
+    public static float getConeHatRotationSpeed() { return coneHatRotationSpeed; }
+    public static void setConeHatRotationSpeed(float v) { coneHatRotationSpeed = Math.max(0f, Math.min(360f, v)); }
+
+    public static boolean isGuiChromaEnabled() { return guiChromaEnabled; }
+    public static void setGuiChromaEnabled(boolean v) { guiChromaEnabled = v; }
+
+    public static boolean isButtonTextChromaEnabled() { return buttonTextChromaEnabled; }
+    public static void setButtonTextChromaEnabled(boolean v) { buttonTextChromaEnabled = v; }
+
+    public static boolean isButtonBorderChromaEnabled() { return buttonBorderChromaEnabled; }
+    public static void setButtonBorderChromaEnabled(boolean v) { buttonBorderChromaEnabled = v; }
+
+    public static boolean isGuiBorderChromaEnabled() { return guiBorderChromaEnabled; }
+    public static void setGuiBorderChromaEnabled(boolean v) { guiBorderChromaEnabled = v; }
+
+    public static int getGuiBorderColor() { return ensureOpaque(guiBorderColor); }
+    public static void setGuiBorderColor(int color) { guiBorderColor = ensureOpaque(color); }
+
+    public static int getButtonBorderColor() { return ensureOpaque(buttonBorderColor); }
+    public static void setButtonBorderColor(int color) { buttonBorderColor = ensureOpaque(color); }
+
+    public static int getButtonTextColor() { return ensureOpaque(buttonTextColor); }
+    public static void setButtonTextColor(int color) { buttonTextColor = ensureOpaque(color); }
 
     public static String getSelectedConeImage() { return selectedConeImage; }
     public static void setSelectedConeImage(String v) { selectedConeImage = v != null ? v : ""; }
@@ -141,4 +173,16 @@ public final class RenderConfig {
 
     /** Convenience: delegates to the unified config. */
     public static void save() { FloydAddonsConfig.save(); }
+
+    /** Shared chroma utility for UI elements. */
+    public static int chromaColor(float offset) {
+        double time = (System.currentTimeMillis() % 4000) / 4000.0;
+        float hue = (float) ((time + offset) % 1.0);
+        int rgb = java.awt.Color.HSBtoRGB(hue, 1.0f, 1.0f);
+        return 0xFF000000 | (rgb & 0xFFFFFF);
+    }
+
+    private static int ensureOpaque(int color) {
+        return color | 0xFF000000;
+    }
 }

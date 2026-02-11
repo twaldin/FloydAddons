@@ -274,7 +274,7 @@ public class RenderScreen extends Screen {
         int titleWidth = textRenderer.getWidth(title);
         int tx = panelX + (BOX_WIDTH - titleWidth) / 2;
         int ty = panelY + 6;
-        context.drawTextWithShadow(textRenderer, title, tx, ty, applyAlpha(chromaColor(0f), guiAlpha));
+        context.drawTextWithShadow(textRenderer, title, tx, ty, resolveTextColor(guiAlpha, 0f));
 
         matrices.popMatrix();
     }
@@ -346,12 +346,13 @@ public class RenderScreen extends Screen {
         boolean hover = mouseX >= bx && mouseX <= bx + bw && mouseY >= by && mouseY <= by + bh;
         int fill = applyAlpha(hover ? 0xFF666666 : 0xFF555555, alpha);
         context.fill(bx, by, bx + bw, by + bh, fill);
-        InventoryHudRenderer.drawChromaBorder(context, bx - 1, by - 1, bx + bw + 1, by + bh + 1, alpha);
+        InventoryHudRenderer.drawButtonBorder(context, bx - 1, by - 1, bx + bw + 1, by + bh + 1, alpha);
         String label = button.getMessage().getString();
         int textWidth = textRenderer.getWidth(label);
         int tx = bx + (bw - textWidth) / 2;
         int ty = by + (bh - textRenderer.fontHeight) / 2;
-        context.drawTextWithShadow(textRenderer, label, tx, ty, applyAlpha(chromaColor((System.currentTimeMillis() % 4000) / 4000f), alpha));
+        float offset = (System.currentTimeMillis() % 4000) / 4000f;
+        context.drawTextWithShadow(textRenderer, label, tx, ty, resolveTextColor(alpha, offset));
     }
 
     private void styleSlider(DrawContext context, SliderWidget slider, float alpha, int mouseX, int mouseY) {
@@ -365,12 +366,20 @@ public class RenderScreen extends Screen {
         float pct = RenderConfig.getXrayOpacity();
         int fillW = (int)((bw - 4) * pct);
         context.fill(bx + 2, by + 2, bx + 2 + fillW, by + bh - 2, applyAlpha(0xFF888888, alpha));
-        InventoryHudRenderer.drawChromaBorder(context, bx - 1, by - 1, bx + bw + 1, by + bh + 1, alpha);
+        InventoryHudRenderer.drawButtonBorder(context, bx - 1, by - 1, bx + bw + 1, by + bh + 1, alpha);
         String label = slider.getMessage().getString();
         int textWidth = textRenderer.getWidth(label);
         int tx = bx + (bw - textWidth) / 2;
         int ty = by + (bh - textRenderer.fontHeight) / 2;
-        context.drawTextWithShadow(textRenderer, label, tx, ty, applyAlpha(chromaColor((System.currentTimeMillis() % 4000) / 4000f), alpha));
+        float offset = (System.currentTimeMillis() % 4000) / 4000f;
+        context.drawTextWithShadow(textRenderer, label, tx, ty, resolveTextColor(alpha, offset));
+    }
+
+    private int resolveTextColor(float alpha, float chromaOffset) {
+        int base = (RenderConfig.isButtonTextChromaEnabled() || RenderConfig.isGuiChromaEnabled())
+                ? chromaColor(chromaOffset)
+                : RenderConfig.getButtonTextColor();
+        return applyAlpha(base, alpha);
     }
 
     private int applyAlpha(int color, float alpha) {
@@ -379,10 +388,8 @@ public class RenderScreen extends Screen {
     }
 
     private int chromaColor(float offset) {
-        double time = (System.currentTimeMillis() % 4000) / 4000.0;
-        float hue = (float) ((time + offset) % 1.0);
-        int rgb = java.awt.Color.HSBtoRGB(hue, 1.0f, 1.0f);
-        return 0xFF000000 | (rgb & 0xFFFFFF);
+        if (!(RenderConfig.isButtonTextChromaEnabled() || RenderConfig.isGuiChromaEnabled())) return RenderConfig.getButtonTextColor();
+        return RenderConfig.chromaColor(offset);
     }
 
     private static void openFileInEditor(java.nio.file.Path path) {

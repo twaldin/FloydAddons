@@ -11,6 +11,7 @@ import net.minecraft.client.render.entity.model.PlayerEntityModel;
 import net.minecraft.client.render.entity.state.PlayerEntityRenderState;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.Util;
 import org.joml.Quaternionf;
 
 public class ConeFeatureRenderer extends FeatureRenderer<PlayerEntityRenderState, PlayerEntityModel> {
@@ -33,14 +34,16 @@ public class ConeFeatureRenderer extends FeatureRenderer<PlayerEntityRenderState
         float radius = RenderConfig.getConeHatRadius();
         float yOffset = RenderConfig.getConeHatYOffset();
 
-        float rotation = RenderConfig.getConeHatRotation();
+        float rotation = currentRotation();
 
         matrices.push();
-        getContextModel().head.applyTransform(matrices);
+        // Anchor to head, then cancel pitch/roll to keep cone upright while keeping yaw
+        var head = getContextModel().head;
+        head.applyTransform(matrices);
+        matrices.multiply(new Quaternionf().rotateZ(-head.roll));
+        matrices.multiply(new Quaternionf().rotateX(-head.pitch));
         matrices.translate(0.0f, yOffset, 0.0f);
-        if (rotation != 0) {
-            matrices.multiply(new Quaternionf().rotateY((float) Math.toRadians(rotation)));
-        }
+        matrices.multiply(new Quaternionf().rotateY((float) Math.toRadians(rotation)));
 
         Identifier texture = ConeHatManager.getTexture(mc);
         RenderLayer renderLayer = RenderLayer.getEntityCutoutNoCull(texture);
@@ -105,5 +108,20 @@ public class ConeFeatureRenderer extends FeatureRenderer<PlayerEntityRenderState
                     .light(light)
                     .normal(entry, nx, ny, nz);
         }
+    }
+
+    private static float currentRotation() {
+        float base = RenderConfig.getConeHatRotation();
+        float speed = RenderConfig.getConeHatRotationSpeed();
+        if (speed == 0f) return base;
+
+        double timeSeconds = Util.getMeasuringTimeMs() / 1000.0;
+        return wrapDegrees(base + (float) (timeSeconds * speed));
+    }
+
+    private static float wrapDegrees(float degrees) {
+        degrees %= 360f;
+        if (degrees < 0) degrees += 360f;
+        return degrees;
     }
 }
