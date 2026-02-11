@@ -169,7 +169,7 @@ public final class ScoreboardHudRenderer implements HudRenderCallback {
     private static int clamp(int v, int min, int max) { return Math.max(min, Math.min(max, v)); }
 
     private static int uiTextColor(float offset) {
-        if (!RenderConfig.isGuiChromaEnabled()) return RenderConfig.getButtonTextColor();
+        if (!RenderConfig.isButtonTextChromaEnabled()) return RenderConfig.getButtonTextColor();
         double time = (System.currentTimeMillis() % 4000) / 4000.0;
         float hue = (float) ((time + offset) % 1.0);
         int rgb = java.awt.Color.HSBtoRGB(hue, 1.0f, 1.0f);

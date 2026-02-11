@@ -33,9 +33,8 @@ public class FloydAddonsScreen extends Screen {
     private long closeStartMs;
     private boolean closing = false;
     private final List<LabelItem> labels = new ArrayList<>();
-    private static final String DISCORD_TEXT = "https://discord.gg/eHVWFgESRz";
-    private static final String DISCORD_HEADER = "For updates on FloydAddons join the discord!";
-    private float linkHover = 0f;
+    private static final String LINK_TEXT = "https://github.com/lunabot9/FloydAddons";
+    private static final String LINK_HEADER = "Check out FloydAddons on GitHub!";
     private int linkX, linkY, linkW, linkH;
     private int panelX;
     private int panelY;
@@ -47,6 +46,8 @@ public class FloydAddonsScreen extends Screen {
     private static final int STYLE_BTN_H = 18;
     private int styleBtnX;
     private int styleBtnY;
+    private int hudBtnX;
+    private int hudBtnY;
 
     private int scaleX(int value) { return Math.round(value * SCALE_X); }
     private int scaleY(int value) { return Math.round(value * SCALE_Y); }
@@ -116,6 +117,11 @@ public class FloydAddonsScreen extends Screen {
         styleBtnY = top + 4;
         drawStyleButton(context, guiAlpha, mouseX, mouseY);
 
+        // HUD button in top-left corner
+        hudBtnX = left + 6;
+        hudBtnY = top + 4;
+        drawHudButton(context, guiAlpha, mouseX, mouseY);
+
         // Title scaled up 75% with chroma gradient right-to-left
         float titleScale = 1.75f;
         matrices.pushMatrix();
@@ -164,10 +170,9 @@ public class FloydAddonsScreen extends Screen {
             float target = hover ? 1f : 0f;
             label.alpha += (target - label.alpha) * 0.2f;
 
-            float offset = 1f - (float) i / Math.max(1, labels.size() - 1);
             int base = applyAlpha(0xFFFFFFFF, guiAlpha);
-            int chroma = applyAlpha(chromaColorSynced(0f), guiAlpha);
-            int blended = blendColors(base, chroma, label.alpha);
+            int hoverColor = applyAlpha(chromaColorSynced(0f), guiAlpha);
+            int blended = blendColors(base, hoverColor, label.alpha);
 
             var m2 = context.getMatrices();
             m2.pushMatrix();
@@ -176,7 +181,7 @@ public class FloydAddonsScreen extends Screen {
             context.drawTextWithShadow(textRenderer, label.text, 0, 0, blended);
             if (label.alpha > 0.01f) {
                 int underlineY = fontH + 1; // move line down ~2px
-                int lineColor = blendColors(base, applyAlpha(chromaColorSynced(0f), guiAlpha), label.alpha);
+                int lineColor = blendColors(base, hoverColor, label.alpha);
                 int lineWidth = labelWidth;
                 int fadeLen = Math.max(1, (int) (lineWidth * 0.35f)); // smoother/longer fade
                 for (int x = 0; x < lineWidth; x++) {
@@ -190,9 +195,9 @@ public class FloydAddonsScreen extends Screen {
             m2.popMatrix();
         }
 
-        // Discord link and header at bottom center
-        int headerWidth = textRenderer.getWidth(DISCORD_HEADER);
-        int linkTextWidth = textRenderer.getWidth(DISCORD_TEXT);
+        // GitHub link and header at bottom center
+        int headerWidth = textRenderer.getWidth(LINK_HEADER);
+        int linkTextWidth = textRenderer.getWidth(LINK_TEXT);
         int baseCenterX = left + PANEL_WIDTH / 2;
         int headerY = bottom - scaleY(34) - 15; // move up 15px
         int linkYLocal = headerY + textRenderer.fontHeight + 10 - 5; // gap, then move link up 5px
@@ -201,16 +206,11 @@ public class FloydAddonsScreen extends Screen {
         int linkXLocal = baseCenterX - linkTextWidth / 2;
 
         int headerColor = applyAlpha(0xFFFFFFFF, guiAlpha);
-        context.drawTextWithShadow(textRenderer, DISCORD_HEADER, headerX, headerY, headerColor);
+        context.drawTextWithShadow(textRenderer, LINK_HEADER, headerX, headerY, headerColor);
 
-        // Hover state for link
-        boolean linkHovering = mouseX >= linkXLocal && mouseX <= linkXLocal + linkTextWidth
-                && mouseY >= linkYLocal && mouseY <= linkYLocal + fontH;
-        float targetLink = linkHovering ? 1f : 0f;
-        linkHover += (targetLink - linkHover) * 0.25f;
-
-        int linkColor = blendColors(applyAlpha(0xFFFFFFFF, guiAlpha), applyAlpha(chromaColorSynced(0f), guiAlpha), linkHover);
-        context.drawTextWithShadow(textRenderer, DISCORD_TEXT, linkXLocal, linkYLocal, linkColor);
+        // Link always chroma
+        int linkColor = applyAlpha(chromaColorSynced(0f), guiAlpha);
+        context.drawTextWithShadow(textRenderer, LINK_TEXT, linkXLocal, linkYLocal, linkColor);
 
         // remember link bounds for click
         linkX = linkXLocal;
@@ -260,6 +260,14 @@ public class FloydAddonsScreen extends Screen {
             }
         }
 
+        // HUD button
+        if (mx >= hudBtnX && mx <= hudBtnX + STYLE_BTN_W && my >= hudBtnY && my <= hudBtnY + STYLE_BTN_H) {
+            if (client != null) {
+                client.setScreen(new HudScreen(this));
+                return true;
+            }
+        }
+
         // start dragging when clicking the top bar
         if (mx >= panelX && mx <= panelX + PANEL_WIDTH && my >= panelY && my <= panelY + DRAG_BAR_HEIGHT) {
             dragging = true;
@@ -270,10 +278,10 @@ public class FloydAddonsScreen extends Screen {
             return true;
         }
 
-        // Discord link
+        // GitHub link
         if (mx >= linkX && mx <= linkX + linkW && my >= linkY && my <= linkY + linkH) {
             try {
-                Util.getOperatingSystem().open(new URI(DISCORD_TEXT));
+                Util.getOperatingSystem().open(new URI(LINK_TEXT));
                 return true;
             } catch (Exception ignored) {
             }
@@ -349,6 +357,8 @@ public class FloydAddonsScreen extends Screen {
         drawChromaBorderSyncedForced(context, left, top, right, bottom, alpha);
     }
 
+    private static final int CHROMA_SEGMENTS_PER_EDGE = 16;
+
     private void drawChromaBorderSyncedForced(DrawContext context, int left, int top, int right, int bottom, float alpha) {
         float a = clamp01(alpha);
         int width = right - left;
@@ -357,26 +367,48 @@ public class FloydAddonsScreen extends Screen {
         if (perimeter <= 0) return;
 
         int pos = 0;
-        for (int x = 0; x < width; x++, pos++) {
-            float offset = pos / (float) perimeter;
-            int c = applyAlpha(chromaColorSynced(offset), a);
-            context.fill(left + x, top, left + x + 1, top + BORDER_THICKNESS, c);
+        int step;
+
+        step = Math.max(1, width / CHROMA_SEGMENTS_PER_EDGE);
+        for (int x = 0; x < width; x += step, pos += step) {
+            int w = Math.min(step, width - x);
+            int c = applyAlpha(chromaColorSynced(pos / (float) perimeter), a);
+            context.fill(left + x, top, left + x + w, top + BORDER_THICKNESS, c);
         }
-        for (int y = 0; y < height; y++, pos++) {
-            float offset = pos / (float) perimeter;
-            int c = applyAlpha(chromaColorSynced(offset), a);
-            context.fill(right - BORDER_THICKNESS, top + y, right, top + y + 1, c);
+        step = Math.max(1, height / CHROMA_SEGMENTS_PER_EDGE);
+        for (int y = 0; y < height; y += step, pos += step) {
+            int h = Math.min(step, height - y);
+            int c = applyAlpha(chromaColorSynced(pos / (float) perimeter), a);
+            context.fill(right - BORDER_THICKNESS, top + y, right, top + y + h, c);
         }
-        for (int x = width - 1; x >= 0; x--, pos++) {
-            float offset = pos / (float) perimeter;
-            int c = applyAlpha(chromaColorSynced(offset), a);
-            context.fill(left + x, bottom - BORDER_THICKNESS, left + x + 1, bottom, c);
+        step = Math.max(1, width / CHROMA_SEGMENTS_PER_EDGE);
+        for (int x = width - 1; x >= 0; x -= step, pos += step) {
+            int w = Math.min(step, x + 1);
+            int c = applyAlpha(chromaColorSynced(pos / (float) perimeter), a);
+            context.fill(left + x - w + 1, bottom - BORDER_THICKNESS, left + x + 1, bottom, c);
         }
-        for (int y = height - 1; y >= 0; y--, pos++) {
-            float offset = pos / (float) perimeter;
-            int c = applyAlpha(chromaColorSynced(offset), a);
-            context.fill(left, top + y, left + BORDER_THICKNESS, top + y + 1, c);
+        step = Math.max(1, height / CHROMA_SEGMENTS_PER_EDGE);
+        for (int y = height - 1; y >= 0; y -= step, pos += step) {
+            int h = Math.min(step, y + 1);
+            int c = applyAlpha(chromaColorSynced(pos / (float) perimeter), a);
+            context.fill(left, top + y - h + 1, left + BORDER_THICKNESS, top + y + 1, c);
         }
+    }
+
+    private void drawHudButton(DrawContext context, float alpha, int mouseX, int mouseY) {
+        int bx = hudBtnX;
+        int by = hudBtnY;
+        boolean hover = mouseX >= bx && mouseX <= bx + STYLE_BTN_W && mouseY >= by && mouseY <= by + STYLE_BTN_H;
+        int fill = applyAlpha(hover ? 0xFF666666 : 0xFF4A4A4A, alpha);
+        context.fill(bx, by, bx + STYLE_BTN_W, by + STYLE_BTN_H, fill);
+        drawChromaBorderSyncedForced(context, bx - 1, by - 1, bx + STYLE_BTN_W + 1, by + STYLE_BTN_H + 1, alpha);
+
+        String label = "Edit HUD";
+        int tw = textRenderer.getWidth(label);
+        int tx = bx + (STYLE_BTN_W - tw) / 2;
+        int ty = by + (STYLE_BTN_H - textRenderer.fontHeight) / 2;
+        int color = applyAlpha(chromaColorSynced(0f), alpha);
+        context.drawTextWithShadow(textRenderer, label, tx, ty, color);
     }
 
     private void drawStyleButton(DrawContext context, float alpha, int mouseX, int mouseY) {
@@ -393,7 +425,7 @@ public class FloydAddonsScreen extends Screen {
         int tw = textRenderer.getWidth(label);
         int tx = bx + (STYLE_BTN_W - tw) / 2;
         int ty = by + (STYLE_BTN_H - textRenderer.fontHeight) / 2;
-        int color = hover ? applyAlpha(chromaColorSynced(0f), alpha) : applyAlpha(0xFFFFFFFF, alpha);
+        int color = applyAlpha(chromaColorSynced(0f), alpha);
         context.drawTextWithShadow(textRenderer, label, tx, ty, color);
     }
 

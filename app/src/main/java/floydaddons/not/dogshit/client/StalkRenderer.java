@@ -94,9 +94,14 @@ public final class StalkRenderer {
         if (len < 0.001f) return;
         float nx = dx / len, ny = dy / len, nz = dz / len;
 
-        // Chroma color cycling
-        float hue = (float) ((System.currentTimeMillis() % 4000) / 4000.0);
-        int rgb = java.awt.Color.HSBtoRGB(hue, 1.0f, 1.0f);
+        // Stalk tracer color: chroma or static
+        int rgb;
+        if (RenderConfig.isStalkTracerChromaEnabled()) {
+            float hue = (float) ((System.currentTimeMillis() % 4000) / 4000.0);
+            rgb = java.awt.Color.HSBtoRGB(hue, 1.0f, 1.0f);
+        } else {
+            rgb = RenderConfig.getStalkTracerColor();
+        }
         float r = ((rgb >> 16) & 0xFF) / 255.0f;
         float g = ((rgb >> 8) & 0xFF) / 255.0f;
         float b = (rgb & 0xFF) / 255.0f;

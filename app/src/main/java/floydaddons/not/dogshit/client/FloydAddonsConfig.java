@@ -93,7 +93,6 @@ public final class FloydAddonsConfig {
         data.coneHatYOffset = RenderConfig.getConeHatYOffset();
         data.coneHatRotation = RenderConfig.getConeHatRotation();
         data.coneHatRotationSpeed = RenderConfig.getConeHatRotationSpeed();
-        data.guiChromaEnabled = RenderConfig.isGuiChromaEnabled();
         data.buttonTextChromaEnabled = RenderConfig.isButtonTextChromaEnabled();
         data.buttonBorderChromaEnabled = RenderConfig.isButtonBorderChromaEnabled();
         data.guiBorderChromaEnabled = RenderConfig.isGuiBorderChromaEnabled();
@@ -105,12 +104,15 @@ public final class FloydAddonsConfig {
         data.customScoreboardX = RenderConfig.getCustomScoreboardX();
         data.customScoreboardY = RenderConfig.getCustomScoreboardY();
         data.serverIdHiderEnabled = RenderConfig.isServerIdHiderEnabled();
-        data.serverIdReplacement = RenderConfig.getServerIdReplacement();
         data.xrayOpacity = RenderConfig.getXrayOpacity();
         data.mobEspEnabled = RenderConfig.isMobEspEnabled();
         data.mobEspTracers = RenderConfig.isMobEspTracers();
         data.mobEspHitboxes = RenderConfig.isMobEspHitboxes();
         data.mobEspStarMobs = RenderConfig.isMobEspStarMobs();
+        data.defaultEspColor = RenderConfig.getDefaultEspColor();
+        data.defaultEspChromaEnabled = RenderConfig.isDefaultEspChromaEnabled();
+        data.stalkTracerColor = RenderConfig.getStalkTracerColor();
+        data.stalkTracerChromaEnabled = RenderConfig.isStalkTracerChromaEnabled();
 
         try {
             try (Writer w = Files.newBufferedWriter(CONFIG_PATH)) {
@@ -192,6 +194,30 @@ public final class FloydAddonsConfig {
         }
     }
 
+    /** Saves name mappings to the separate JSON file. */
+    public static void saveNameMappings() {
+        ensureDir();
+        try (Writer w = Files.newBufferedWriter(NAMES_PATH)) {
+            GSON.toJson(NickHiderConfig.getNameMappings(), w);
+        } catch (IOException ignored) {}
+    }
+
+    /** Saves mob ESP filter entries to the JSON file. */
+    public static void saveMobEsp() {
+        ensureDir();
+        try (Writer w = Files.newBufferedWriter(MOB_ESP_PATH)) {
+            GSON.toJson(MobEspManager.getRawEntries(), w);
+        } catch (IOException ignored) {}
+    }
+
+    /** Saves xray opaque block list to the JSON file. */
+    public static void saveXrayOpaque() {
+        ensureDir();
+        try (Writer w = Files.newBufferedWriter(XRAY_OPAQUE_PATH)) {
+            GSON.toJson(new java.util.ArrayList<>(RenderConfig.getXrayOpaqueBlocks()), w);
+        } catch (IOException ignored) {}
+    }
+
     private static void ensureDir() {
         try { Files.createDirectories(CONFIG_DIR); } catch (IOException ignored) {}
     }
@@ -218,7 +244,6 @@ public final class FloydAddonsConfig {
         if (data.coneHatYOffset != 0) RenderConfig.setConeHatYOffset(data.coneHatYOffset);
         RenderConfig.setConeHatRotation(data.coneHatRotation);
         RenderConfig.setConeHatRotationSpeed(data.coneHatRotationSpeed);
-        RenderConfig.setGuiChromaEnabled(data.guiChromaEnabled);
         RenderConfig.setButtonTextChromaEnabled(data.buttonTextChromaEnabled);
         RenderConfig.setButtonBorderChromaEnabled(data.buttonBorderChromaEnabled);
         RenderConfig.setGuiBorderChromaEnabled(data.guiBorderChromaEnabled);
@@ -230,12 +255,15 @@ public final class FloydAddonsConfig {
         RenderConfig.setCustomScoreboardX(data.customScoreboardX);
         RenderConfig.setCustomScoreboardY(data.customScoreboardY);
         RenderConfig.setServerIdHiderEnabled(data.serverIdHiderEnabled);
-        if (data.serverIdReplacement != null) RenderConfig.setServerIdReplacement(data.serverIdReplacement);
         if (data.xrayOpacity > 0) RenderConfig.setXrayOpacity(data.xrayOpacity);
         RenderConfig.setMobEspEnabled(data.mobEspEnabled);
         RenderConfig.setMobEspTracers(data.mobEspTracers);
         RenderConfig.setMobEspHitboxes(data.mobEspHitboxes);
         RenderConfig.setMobEspStarMobs(data.mobEspStarMobs);
+        RenderConfig.setDefaultEspColor(data.defaultEspColor);
+        RenderConfig.setDefaultEspChromaEnabled(data.defaultEspChromaEnabled);
+        RenderConfig.setStalkTracerColor(data.stalkTracerColor);
+        RenderConfig.setStalkTracerChromaEnabled(data.stalkTracerChromaEnabled);
     }
 
     private static class Data {
@@ -257,10 +285,9 @@ public final class FloydAddonsConfig {
         float coneHatYOffset;
         float coneHatRotation;
         float coneHatRotationSpeed;
-        boolean guiChromaEnabled = true;
-        boolean buttonTextChromaEnabled = false;
-        boolean buttonBorderChromaEnabled = false;
-        boolean guiBorderChromaEnabled = false;
+        boolean buttonTextChromaEnabled = true;
+        boolean buttonBorderChromaEnabled = true;
+        boolean guiBorderChromaEnabled = true;
         int guiBorderColor = RenderConfig.getGuiBorderColor();
         int buttonBorderColor = RenderConfig.getButtonBorderColor();
         int buttonTextColor = RenderConfig.getButtonTextColor();
@@ -269,11 +296,14 @@ public final class FloydAddonsConfig {
         int customScoreboardX;
         int customScoreboardY;
         boolean serverIdHiderEnabled;
-        String serverIdReplacement;
         float xrayOpacity;
         boolean mobEspEnabled;
         boolean mobEspTracers = true;
         boolean mobEspHitboxes = true;
         boolean mobEspStarMobs = true;
+        int defaultEspColor = 0xFFFFFFFF;
+        boolean defaultEspChromaEnabled = true;
+        int stalkTracerColor = 0xFFFFFFFF;
+        boolean stalkTracerChromaEnabled = true;
     }
 }

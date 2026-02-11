@@ -446,7 +446,7 @@ public class ConeHatScreen extends Screen {
 
         // Divider between controls and preview
         int divX = panelX + CONTROLS_WIDTH;
-        InventoryHudRenderer.drawChromaBorder(context, divX - 1, top + DRAG_BAR_HEIGHT, divX, bottom - 1, guiAlpha);
+        InventoryHudRenderer.drawChromaBorder(context, divX - 1, top - 1, divX, bottom + 1, guiAlpha);
 
         // Title centered over controls area
         String title = "Cone Hat Config";
@@ -503,13 +503,11 @@ public class ConeHatScreen extends Screen {
             int prevCenterX = (prevX1 + prevX2) / 2;
             int prevCenterY = prevY2 - 10;
 
-            // mimic inventory: rotate model with mouse
-            float relX = prevCenterX - mouseX;
-            float relY = prevCenterY - mouseY;
+            // Vanilla drawEntity takes absolute mouse coords and computes rotation internally
             InventoryScreen.drawEntity(context,
                     prevX1, prevY1, prevX2, prevY2,
                     35, 0.0625f,
-                    relX, relY,
+                    (float) mouseX, (float) mouseY,
                     client.player);
         }
     }
@@ -656,7 +654,7 @@ public class ConeHatScreen extends Screen {
         int bx = button.getX(), by = button.getY(), bw = button.getWidth(), bh = button.getHeight();
         boolean hover = mouseX >= bx && mouseX <= bx + bw && mouseY >= by && mouseY <= by + bh;
         context.fill(bx, by, bx + bw, by + bh, applyAlpha(hover ? 0xFF666666 : 0xFF555555, alpha));
-        InventoryHudRenderer.drawChromaBorder(context, bx - 1, by - 1, bx + bw + 1, by + bh + 1, alpha);
+        InventoryHudRenderer.drawButtonBorder(context, bx - 1, by - 1, bx + bw + 1, by + bh + 1, alpha);
         String label = button.getMessage().getString();
         int tw = textRenderer.getWidth(label);
         context.drawTextWithShadow(textRenderer, label, bx + (bw - tw) / 2, by + (bh - textRenderer.fontHeight) / 2,
@@ -669,7 +667,7 @@ public class ConeHatScreen extends Screen {
         context.fill(bx, by, bx + bw, by + bh, applyAlpha(hover ? 0xFF666666 : 0xFF555555, alpha));
         int fillW = (int) ((bw - 4) * Math.max(0, Math.min(1, pct)));
         context.fill(bx + 2, by + 2, bx + 2 + fillW, by + bh - 2, applyAlpha(0xFF888888, alpha));
-        InventoryHudRenderer.drawChromaBorder(context, bx - 1, by - 1, bx + bw + 1, by + bh + 1, alpha);
+        InventoryHudRenderer.drawButtonBorder(context, bx - 1, by - 1, bx + bw + 1, by + bh + 1, alpha);
         String label = slider.getMessage().getString();
         int tw = textRenderer.getWidth(label);
         context.drawTextWithShadow(textRenderer, label, bx + (bw - tw) / 2, by + (bh - textRenderer.fontHeight) / 2,
@@ -682,7 +680,7 @@ public class ConeHatScreen extends Screen {
     }
 
     private int chromaColor(float offset) {
-        if (!(RenderConfig.isButtonTextChromaEnabled() || RenderConfig.isGuiChromaEnabled())) return RenderConfig.getButtonTextColor();
+        if (!(RenderConfig.isButtonTextChromaEnabled())) return RenderConfig.getButtonTextColor();
         return RenderConfig.chromaColor(offset);
     }
 

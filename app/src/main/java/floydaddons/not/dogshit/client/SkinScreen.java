@@ -393,7 +393,7 @@ public class SkinScreen extends Screen {
     }
 
     private int resolveTextColor(float offset) {
-        if (!(RenderConfig.isButtonTextChromaEnabled() || RenderConfig.isGuiChromaEnabled())) return RenderConfig.getButtonTextColor();
+        if (!(RenderConfig.isButtonTextChromaEnabled())) return RenderConfig.getButtonTextColor();
         return RenderConfig.chromaColor(offset);
     }
 }

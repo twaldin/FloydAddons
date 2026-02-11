@@ -124,7 +124,7 @@ public final class InventoryHudRenderer implements HudRenderCallback {
     }
 
     public static void drawChromaBorder(DrawContext context, int left, int top, int right, int bottom, float alpha) {
-        if (RenderConfig.isGuiBorderChromaEnabled() || RenderConfig.isGuiChromaEnabled()) {
+        if (RenderConfig.isGuiBorderChromaEnabled()) {
             drawRainbowBorder(context, left, top, right, bottom, alpha);
         } else {
             drawSolidBorder(context, left, top, right, bottom, RenderConfig.getGuiBorderColor(), alpha);
@@ -132,12 +132,14 @@ public final class InventoryHudRenderer implements HudRenderCallback {
     }
 
     public static void drawButtonBorder(DrawContext context, int left, int top, int right, int bottom, float alpha) {
-        if (RenderConfig.isButtonBorderChromaEnabled() || RenderConfig.isGuiChromaEnabled()) {
+        if (RenderConfig.isButtonBorderChromaEnabled()) {
             drawRainbowBorder(context, left, top, right, bottom, alpha);
         } else {
             drawSolidBorder(context, left, top, right, bottom, RenderConfig.getButtonBorderColor(), alpha);
         }
     }
+
+    private static final int CHROMA_SEGMENTS_PER_EDGE = 12;
 
     private static void drawRainbowBorder(DrawContext context, int left, int top, int right, int bottom, float alpha) {
         int width = right - left;
@@ -145,24 +147,33 @@ public final class InventoryHudRenderer implements HudRenderCallback {
         int perimeter = width * 2 + height * 2;
         if (perimeter <= 0) return;
 
-        // Coarse stepping to reduce fill calls (perf)
-        int step = Math.max(1, (int) Math.min(4, Math.sqrt(perimeter) / 12)); // ~4px on big panels, smaller on tiny
+        // Fixed segment count per edge (~48 total fill calls regardless of size)
         int pos = 0;
+        int step;
+
+        // Top edge
+        step = Math.max(1, width / CHROMA_SEGMENTS_PER_EDGE);
         for (int x = 0; x < width; x += step, pos += step) {
             int w = Math.min(step, width - x);
             int c = applyAlpha(chromaColor(pos / (float) perimeter), alpha);
             context.fill(left + x, top, left + x + w, top + 1, c);
         }
+        // Right edge
+        step = Math.max(1, height / CHROMA_SEGMENTS_PER_EDGE);
         for (int y = 0; y < height; y += step, pos += step) {
             int h = Math.min(step, height - y);
             int c = applyAlpha(chromaColor(pos / (float) perimeter), alpha);
             context.fill(right - 1, top + y, right, top + y + h, c);
         }
+        // Bottom edge
+        step = Math.max(1, width / CHROMA_SEGMENTS_PER_EDGE);
         for (int x = width - 1; x >= 0; x -= step, pos += step) {
             int w = Math.min(step, x + 1);
             int c = applyAlpha(chromaColor(pos / (float) perimeter), alpha);
             context.fill(left + x - w + 1, bottom - 1, left + x + 1, bottom, c);
         }
+        // Left edge
+        step = Math.max(1, height / CHROMA_SEGMENTS_PER_EDGE);
         for (int y = height - 1; y >= 0; y -= step, pos += step) {
             int h = Math.min(step, y + 1);
             int c = applyAlpha(chromaColor(pos / (float) perimeter), alpha);

@@ -10,27 +10,24 @@ import net.minecraft.util.Util;
 
 /**
  * Render settings screen with compact paired-button layout.
+ * HUD settings (inventory, scoreboard) have moved to HudScreen.
  */
 public class RenderScreen extends Screen {
     private final Screen parent;
 
-    private ButtonWidget inventoryToggle;
-    private ButtonWidget inventoryMoveButton;
     private ButtonWidget coneHatToggle;
     private ButtonWidget coneHatConfigButton;
-    private ButtonWidget scoreboardToggle;
-    private ButtonWidget scoreboardMoveButton;
     private ButtonWidget serverIdToggle;
     private ButtonWidget xrayToggle;
     private SliderWidget opacitySlider;
-    private ButtonWidget openFileButton;
+    private ButtonWidget editBlocksButton;
     private ButtonWidget reloadBlocksButton;
     private ButtonWidget mobEspToggle;
     private ButtonWidget mobEspConfigButton;
     private ButtonWidget doneButton;
 
     private static final int BOX_WIDTH = 320;
-    private static final int BOX_HEIGHT = 272;
+    private static final int BOX_HEIGHT = 220;
     private static final int DRAG_BAR_HEIGHT = 18;
     private static final long FADE_DURATION_MS = 90;
     private static final int ROW_HEIGHT = 20;
@@ -71,55 +68,33 @@ public class RenderScreen extends Screen {
 
         int le = leftEdge();
 
-        // Row 0: Inventory HUD toggle + Move
-        inventoryToggle = ButtonWidget.builder(Text.literal(inventoryLabel()), b -> {
-            RenderConfig.setInventoryHudEnabled(!RenderConfig.isInventoryHudEnabled());
-            b.setMessage(Text.literal(inventoryLabel()));
-            RenderConfig.save();
-        }).dimensions(le, rowY(0), MAIN_W, ROW_HEIGHT).build();
-
-        inventoryMoveButton = ButtonWidget.builder(Text.literal("Move"), b -> {
-            if (client != null) client.setScreen(new MoveInventoryScreen(this));
-        }).dimensions(le + MAIN_W + PAIR_GAP, rowY(0), SECONDARY_W, ROW_HEIGHT).build();
-
-        // Row 1: Cone Hat toggle + Config
+        // Row 0: Cone Hat toggle + Config
         coneHatToggle = ButtonWidget.builder(Text.literal(coneHatLabel()), b -> {
             RenderConfig.setFloydHatEnabled(!RenderConfig.isFloydHatEnabled());
             b.setMessage(Text.literal(coneHatLabel()));
             RenderConfig.save();
-        }).dimensions(le, rowY(1), MAIN_W, ROW_HEIGHT).build();
+        }).dimensions(le, rowY(0), MAIN_W, ROW_HEIGHT).build();
 
         coneHatConfigButton = ButtonWidget.builder(Text.literal("Config"), b -> {
             if (client != null) client.setScreen(new ConeHatScreen(this));
-        }).dimensions(le + MAIN_W + PAIR_GAP, rowY(1), SECONDARY_W, ROW_HEIGHT).build();
+        }).dimensions(le + MAIN_W + PAIR_GAP, rowY(0), SECONDARY_W, ROW_HEIGHT).build();
 
-        // Row 2: Scoreboard toggle + Move
-        scoreboardToggle = ButtonWidget.builder(Text.literal(scoreboardLabel()), b -> {
-            RenderConfig.setCustomScoreboardEnabled(!RenderConfig.isCustomScoreboardEnabled());
-            b.setMessage(Text.literal(scoreboardLabel()));
-            RenderConfig.save();
-        }).dimensions(le, rowY(2), MAIN_W, ROW_HEIGHT).build();
-
-        scoreboardMoveButton = ButtonWidget.builder(Text.literal("Move"), b -> {
-            if (client != null) client.setScreen(new MoveScoreboardScreen(this));
-        }).dimensions(le + MAIN_W + PAIR_GAP, rowY(2), SECONDARY_W, ROW_HEIGHT).build();
-
-        // Row 3: Server ID Hider
+        // Row 1: Server ID Hider
         serverIdToggle = ButtonWidget.builder(Text.literal(serverIdLabel()), b -> {
             RenderConfig.setServerIdHiderEnabled(!RenderConfig.isServerIdHiderEnabled());
             b.setMessage(Text.literal(serverIdLabel()));
             RenderConfig.save();
-        }).dimensions(le, rowY(3), FULL_W, ROW_HEIGHT).build();
+        }).dimensions(le, rowY(1), FULL_W, ROW_HEIGHT).build();
 
-        // Row 4: X-Ray toggle
+        // Row 2: X-Ray toggle
         xrayToggle = ButtonWidget.builder(Text.literal(xrayLabel()), b -> {
             RenderConfig.toggleXray();
             b.setMessage(Text.literal(xrayLabel()));
-        }).dimensions(le, rowY(4), FULL_W, ROW_HEIGHT).build();
+        }).dimensions(le, rowY(2), FULL_W, ROW_HEIGHT).build();
 
-        // Row 5: Opacity slider
+        // Row 3: Opacity slider
         opacitySlider = new SliderWidget(
-                le, rowY(5), FULL_W, ROW_HEIGHT,
+                le, rowY(3), FULL_W, ROW_HEIGHT,
                 Text.literal(opacityLabel()),
                 opacityToSlider(RenderConfig.getXrayOpacity())
         ) {
@@ -140,59 +115,47 @@ public class RenderScreen extends Screen {
             }
         };
 
-        // Row 6: Open File + Reload Blocks
-        openFileButton = ButtonWidget.builder(Text.literal("Open File"), b -> {
-            try {
-                java.nio.file.Path path = FloydAddonsConfig.getXrayOpaquePath();
-                if (!java.nio.file.Files.exists(path)) {
-                    FloydAddonsConfig.loadXrayOpaque(); // creates template
-                }
-                openFileInEditor(path);
-            } catch (Exception ignored) {}
-        }).dimensions(le, rowY(6), HALF_W, ROW_HEIGHT).build();
+        // Row 4: Edit Blocks + Reload Blocks
+        editBlocksButton = ButtonWidget.builder(Text.literal("Edit Blocks"), b -> {
+            if (client != null) client.setScreen(new XrayEditorScreen(this));
+        }).dimensions(le, rowY(4), HALF_W, ROW_HEIGHT).build();
 
         reloadBlocksButton = ButtonWidget.builder(Text.literal("Reload Blocks"), b -> {
             FloydAddonsConfig.loadXrayOpaque();
             if (RenderConfig.isXrayEnabled()) {
                 RenderConfig.rebuildChunks();
             }
-        }).dimensions(le + HALF_W + PAIR_GAP, rowY(6), HALF_W, ROW_HEIGHT).build();
+        }).dimensions(le + HALF_W + PAIR_GAP, rowY(4), HALF_W, ROW_HEIGHT).build();
 
-        // Row 7: Mob ESP toggle + Config
+        // Row 5: Mob ESP toggle + Config
         mobEspToggle = ButtonWidget.builder(Text.literal(mobEspLabel()), b -> {
             RenderConfig.toggleMobEsp();
             b.setMessage(Text.literal(mobEspLabel()));
             RenderConfig.save();
-        }).dimensions(le, rowY(7), MAIN_W, ROW_HEIGHT).build();
+        }).dimensions(le, rowY(5), MAIN_W, ROW_HEIGHT).build();
 
         mobEspConfigButton = ButtonWidget.builder(Text.literal("Config"), b -> {
             if (client != null) client.setScreen(new MobEspScreen(this));
-        }).dimensions(le + MAIN_W + PAIR_GAP, rowY(7), SECONDARY_W, ROW_HEIGHT).build();
+        }).dimensions(le + MAIN_W + PAIR_GAP, rowY(5), SECONDARY_W, ROW_HEIGHT).build();
 
         // Done
         doneButton = ButtonWidget.builder(Text.literal("Done"), b -> close())
                 .dimensions(panelX + (BOX_WIDTH - 100) / 2, panelY + BOX_HEIGHT - 30, 100, ROW_HEIGHT)
                 .build();
 
-        addDrawableChild(inventoryToggle);
-        addDrawableChild(inventoryMoveButton);
         addDrawableChild(coneHatToggle);
         addDrawableChild(coneHatConfigButton);
-        addDrawableChild(scoreboardToggle);
-        addDrawableChild(scoreboardMoveButton);
         addDrawableChild(serverIdToggle);
         addDrawableChild(xrayToggle);
         addDrawableChild(opacitySlider);
-        addDrawableChild(openFileButton);
+        addDrawableChild(editBlocksButton);
         addDrawableChild(reloadBlocksButton);
         addDrawableChild(mobEspToggle);
         addDrawableChild(mobEspConfigButton);
         addDrawableChild(doneButton);
     }
 
-    private String inventoryLabel() { return "Inventory HUD: " + (RenderConfig.isInventoryHudEnabled() ? "ON" : "OFF"); }
     private String coneHatLabel() { return "Cone Hat: " + (RenderConfig.isFloydHatEnabled() ? "ON" : "OFF"); }
-    private String scoreboardLabel() { return "Scoreboard: " + (RenderConfig.isCustomScoreboardEnabled() ? "ON" : "OFF"); }
     private String serverIdLabel() { return "Server ID Hider: " + (RenderConfig.isServerIdHiderEnabled() ? "ON" : "OFF"); }
     private String xrayLabel() { return "X-Ray: " + (RenderConfig.isXrayEnabled() ? "ON" : "OFF"); }
     private String opacityLabel() { return "X-Ray Opacity: " + Math.round(RenderConfig.getXrayOpacity() * 100) + "%"; }
@@ -254,16 +217,12 @@ public class RenderScreen extends Screen {
         context.fill(left, top, right, bottom, baseColor);
         InventoryHudRenderer.drawChromaBorder(context, left - 1, top - 1, right + 1, bottom + 1, guiAlpha);
 
-        styleButton(context, inventoryToggle, guiAlpha, mouseX, mouseY);
-        styleButton(context, inventoryMoveButton, guiAlpha, mouseX, mouseY);
         styleButton(context, coneHatToggle, guiAlpha, mouseX, mouseY);
         styleButton(context, coneHatConfigButton, guiAlpha, mouseX, mouseY);
-        styleButton(context, scoreboardToggle, guiAlpha, mouseX, mouseY);
-        styleButton(context, scoreboardMoveButton, guiAlpha, mouseX, mouseY);
         styleButton(context, serverIdToggle, guiAlpha, mouseX, mouseY);
         styleButton(context, xrayToggle, guiAlpha, mouseX, mouseY);
         styleSlider(context, opacitySlider, guiAlpha, mouseX, mouseY);
-        styleButton(context, openFileButton, guiAlpha, mouseX, mouseY);
+        styleButton(context, editBlocksButton, guiAlpha, mouseX, mouseY);
         styleButton(context, reloadBlocksButton, guiAlpha, mouseX, mouseY);
         styleButton(context, mobEspToggle, guiAlpha, mouseX, mouseY);
         styleButton(context, mobEspConfigButton, guiAlpha, mouseX, mouseY);
@@ -322,19 +281,15 @@ public class RenderScreen extends Screen {
 
     private void repositionWidgets() {
         int le = leftEdge();
-        inventoryToggle.setX(le);              inventoryToggle.setY(rowY(0));
-        inventoryMoveButton.setX(le + MAIN_W + PAIR_GAP); inventoryMoveButton.setY(rowY(0));
-        coneHatToggle.setX(le);                coneHatToggle.setY(rowY(1));
-        coneHatConfigButton.setX(le + MAIN_W + PAIR_GAP); coneHatConfigButton.setY(rowY(1));
-        scoreboardToggle.setX(le);             scoreboardToggle.setY(rowY(2));
-        scoreboardMoveButton.setX(le + MAIN_W + PAIR_GAP); scoreboardMoveButton.setY(rowY(2));
-        serverIdToggle.setX(le);               serverIdToggle.setY(rowY(3));
-        xrayToggle.setX(le);                   xrayToggle.setY(rowY(4));
-        opacitySlider.setX(le);                opacitySlider.setY(rowY(5));
-        openFileButton.setX(le);               openFileButton.setY(rowY(6));
-        reloadBlocksButton.setX(le + HALF_W + PAIR_GAP); reloadBlocksButton.setY(rowY(6));
-        mobEspToggle.setX(le);                 mobEspToggle.setY(rowY(7));
-        mobEspConfigButton.setX(le + MAIN_W + PAIR_GAP); mobEspConfigButton.setY(rowY(7));
+        coneHatToggle.setX(le);                coneHatToggle.setY(rowY(0));
+        coneHatConfigButton.setX(le + MAIN_W + PAIR_GAP); coneHatConfigButton.setY(rowY(0));
+        serverIdToggle.setX(le);               serverIdToggle.setY(rowY(1));
+        xrayToggle.setX(le);                   xrayToggle.setY(rowY(2));
+        opacitySlider.setX(le);                opacitySlider.setY(rowY(3));
+        editBlocksButton.setX(le);             editBlocksButton.setY(rowY(4));
+        reloadBlocksButton.setX(le + HALF_W + PAIR_GAP); reloadBlocksButton.setY(rowY(4));
+        mobEspToggle.setX(le);                 mobEspToggle.setY(rowY(5));
+        mobEspConfigButton.setX(le + MAIN_W + PAIR_GAP); mobEspConfigButton.setY(rowY(5));
         doneButton.setX(panelX + (BOX_WIDTH - 100) / 2); doneButton.setY(panelY + BOX_HEIGHT - 30);
     }
 
@@ -376,7 +331,7 @@ public class RenderScreen extends Screen {
     }
 
     private int resolveTextColor(float alpha, float chromaOffset) {
-        int base = (RenderConfig.isButtonTextChromaEnabled() || RenderConfig.isGuiChromaEnabled())
+        int base = (RenderConfig.isButtonTextChromaEnabled())
                 ? chromaColor(chromaOffset)
                 : RenderConfig.getButtonTextColor();
         return applyAlpha(base, alpha);
@@ -388,31 +343,9 @@ public class RenderScreen extends Screen {
     }
 
     private int chromaColor(float offset) {
-        if (!(RenderConfig.isButtonTextChromaEnabled() || RenderConfig.isGuiChromaEnabled())) return RenderConfig.getButtonTextColor();
+        if (!(RenderConfig.isButtonTextChromaEnabled())) return RenderConfig.getButtonTextColor();
         return RenderConfig.chromaColor(offset);
     }
 
-    private static void openFileInEditor(java.nio.file.Path path) {
-        String file = path.toAbsolutePath().toString();
-        String os = System.getProperty("os.name", "").toLowerCase();
-        try {
-            ProcessBuilder pb;
-            if (os.contains("win")) {
-                pb = new ProcessBuilder("cmd", "/c", "start", "", file);
-            } else if (os.contains("mac")) {
-                pb = new ProcessBuilder("open", file);
-            } else {
-                pb = new ProcessBuilder("sh", "-c", "xdg-open \"" + file + "\" &");
-            }
-            java.io.File devNull = new java.io.File(os.contains("win") ? "NUL" : "/dev/null");
-            pb.redirectInput(ProcessBuilder.Redirect.from(devNull));
-            pb.redirectOutput(ProcessBuilder.Redirect.to(devNull));
-            pb.redirectError(ProcessBuilder.Redirect.to(devNull));
-            pb.start();
-        } catch (Exception ignored) {
-        }
-    }
-
     private int clamp(int v, int min, int max) { return Math.max(min, Math.min(max, v)); }
-
 }
