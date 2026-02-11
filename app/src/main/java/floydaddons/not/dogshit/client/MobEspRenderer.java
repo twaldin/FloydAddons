@@ -123,8 +123,8 @@ public final class MobEspRenderer {
                 if (len < 0.001f) continue;
                 float nx = dx / len, ny = dy / len, nz = dz / len;
 
-                tracerBuf.vertex(entry, sx, sy, sz).color(r, g, b, 1.0f).normal(entry, nx, ny, nz);
-                tracerBuf.vertex(entry, ex, ey, ez).color(r, g, b, 1.0f).normal(entry, nx, ny, nz);
+                tracerBuf.vertex(entry, sx, sy, sz).color(r, g, b, 1.0f).normal(entry, nx, ny, nz).lineWidth(2.0f);
+                tracerBuf.vertex(entry, ex, ey, ez).color(r, g, b, 1.0f).normal(entry, nx, ny, nz).lineWidth(2.0f);
                 drew = true;
             }
 
@@ -248,8 +248,8 @@ public final class MobEspRenderer {
         float len = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
         if (len < 0.001f) return;
         float nx = dx / len, ny = dy / len, nz = dz / len;
-        buf.vertex(entry, x1, y1, z1).color(r, g, b, a).normal(entry, nx, ny, nz);
-        buf.vertex(entry, x2, y2, z2).color(r, g, b, a).normal(entry, nx, ny, nz);
+        buf.vertex(entry, x1, y1, z1).color(r, g, b, a).normal(entry, nx, ny, nz).lineWidth(2.0f);
+        buf.vertex(entry, x2, y2, z2).color(r, g, b, a).normal(entry, nx, ny, nz).lineWidth(2.0f);
     }
 
     private static void renderDebugLabels(WorldRenderContext context, MinecraftClient mc,

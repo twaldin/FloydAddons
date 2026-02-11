@@ -112,8 +112,8 @@ public final class StalkRenderer {
         MatrixStack.Entry entry = context.matrices().peek();
 
         // Draw the line: two vertices with position, color, and normal
-        buf.vertex(entry, sx, sy, sz).color(r, g, b, 1.0f).normal(entry, nx, ny, nz);
-        buf.vertex(entry, ex, ey, ez).color(r, g, b, 1.0f).normal(entry, nx, ny, nz);
+        buf.vertex(entry, sx, sy, sz).color(r, g, b, 1.0f).normal(entry, nx, ny, nz).lineWidth(3.0f);
+        buf.vertex(entry, ex, ey, ez).color(r, g, b, 1.0f).normal(entry, nx, ny, nz).lineWidth(3.0f);
 
         // Flush our render layer immediately
         consumers.draw(TRACER_LAYER);
