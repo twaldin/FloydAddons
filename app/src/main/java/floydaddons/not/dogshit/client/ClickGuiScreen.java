@@ -6,6 +6,10 @@ import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.ingame.InventoryScreen;
+import net.minecraft.client.render.entity.EntityRenderManager;
+import net.minecraft.client.render.entity.EntityRenderer;
+import net.minecraft.client.render.entity.state.EntityRenderState;
+import net.minecraft.client.render.entity.state.LivingEntityRenderState;
 import net.minecraft.client.input.CharInput;
 import net.minecraft.client.input.KeyInput;
 import net.minecraft.entity.Entity;
@@ -892,33 +896,25 @@ public class ClickGuiScreen extends Screen {
 
         try {
             if (isCape) {
-                // Face backwards: replicate the first overload's logic but with yaw flipped 180
-                float centerX = pvX + pvW / 2f;
-                float centerY = pvY + pvH / 2f;
+                // Face backwards: build render state manually with bodyYaw=0
                 context.enableScissor(pvX, pvY, pvX + pvW, pvY + pvH);
-                // Same rotateZ(PI) as vanilla to flip right-side-up; bodyYaw=0 handles backwards
                 Quaternionf bodyRot = new Quaternionf().rotateZ((float) Math.PI);
-                float o = client.player.getScale();
-                Vector3f offset = new Vector3f(0f, client.player.getHeight() / 2f + 0.0625f * o, 0f);
-                float scaledSize = 25f / o;
-                // Save and set entity facing away
-                float savedBodyYaw = client.player.bodyYaw;
-                float savedYaw = client.player.getYaw();
-                float savedPitch = client.player.getPitch();
-                float savedHeadYaw = client.player.headYaw;
-                float savedLastHeadYaw = client.player.lastHeadYaw;
-                client.player.bodyYaw = 0f;
-                client.player.setYaw(0f);
-                client.player.setPitch(0f);
-                client.player.headYaw = 0f;
-                client.player.lastHeadYaw = 0f;
-                InventoryScreen.drawEntity(context, pvX, pvY, pvX + pvW, pvY + pvH,
-                        scaledSize, offset, bodyRot, null, client.player);
-                client.player.bodyYaw = savedBodyYaw;
-                client.player.setYaw(savedYaw);
-                client.player.setPitch(savedPitch);
-                client.player.headYaw = savedHeadYaw;
-                client.player.lastHeadYaw = savedLastHeadYaw;
+                EntityRenderManager renderManager = MinecraftClient.getInstance().getEntityRenderDispatcher();
+                EntityRenderer<? super net.minecraft.entity.LivingEntity, ?> renderer = renderManager.getRenderer(client.player);
+                EntityRenderState renderState = renderer.getAndUpdateRenderState(client.player, 1.0f);
+                renderState.light = 15728880;
+                renderState.shadowPieces.clear();
+                renderState.outlineColor = 0;
+                if (renderState instanceof LivingEntityRenderState lrs) {
+                    lrs.bodyYaw = 0f;
+                    lrs.relativeHeadYaw = 0f;
+                    lrs.pitch = 0f;
+                    lrs.width /= lrs.baseScale;
+                    lrs.height /= lrs.baseScale;
+                    lrs.baseScale = 1.0f;
+                }
+                Vector3f offset = new Vector3f(0f, renderState.height / 2f + 0.0625f, 0f);
+                context.addEntity(renderState, 25, offset, bodyRot, null, pvX, pvY, pvX + pvW, pvY + pvH);
                 context.disableScissor();
             } else {
                 InventoryScreen.drawEntity(context, pvX, pvY, pvX + pvW, pvY + pvH,

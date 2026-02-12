@@ -262,7 +262,6 @@ public final class CapeManager {
                     NativeImage working = new NativeImage(NativeImage.Format.RGBA, width, height, false);
                     working.copyFrom(frames.get(0));
                     NativeImageBackedTexture tex = new NativeImageBackedTexture(() -> "floydaddons_cape_" + fileName, working);
-                    tex.setFilter(true, true);
                     Identifier id = Identifier.of(FloydAddonsClient.MOD_ID, "cape/" + fileName.toLowerCase().replaceAll("[^a-z0-9._-]", "_"));
                     mc.getTextureManager().registerTexture(id, tex);
                     int[] delayArray = delays.stream().mapToInt(Integer::intValue).toArray();
