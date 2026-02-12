@@ -1,6 +1,6 @@
 package floydaddons.not.dogshit.mixin;
 
-import floydaddons.not.dogshit.client.HidersConfig;
+import floydaddons.not.dogshit.client.config.HidersConfig;
 import net.minecraft.client.render.entity.FallingBlockEntityRenderer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
