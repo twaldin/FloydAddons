@@ -6,6 +6,7 @@ import net.minecraft.client.texture.NativeImageBackedTexture;
 import net.minecraft.util.Identifier;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -22,6 +23,8 @@ public final class CapeManager {
     private static final ConcurrentMap<String, Identifier> CACHE = new ConcurrentHashMap<>();
     private static final ConcurrentMap<String, Float> ASPECT_CACHE = new ConcurrentHashMap<>();
     private static final Identifier FALLBACK = Identifier.of("textures/entity/cape/vanilla");
+    private static final String DEFAULT_CAPE_RESOURCE = "/assets/floydaddons/textures/cape/default_cape.png";
+    private static final String DEFAULT_CAPE_NAME = "default_cape.png";
     private static final long IMAGE_SCAN_CACHE_MS = 3_000L;
 
     private static volatile List<String> cachedImages = List.of();
@@ -33,7 +36,16 @@ public final class CapeManager {
     public static Path ensureDir() {
         Path dir = FloydAddonsConfig.getConfigDir().resolve("capes");
         try { Files.createDirectories(dir); } catch (IOException ignored) {}
+        extractDefaultIfEmpty(dir);
         return dir;
+    }
+
+    private static void extractDefaultIfEmpty(Path dir) {
+        Path target = dir.resolve(DEFAULT_CAPE_NAME);
+        if (Files.exists(target)) return;
+        try (InputStream in = CapeManager.class.getResourceAsStream(DEFAULT_CAPE_RESOURCE)) {
+            if (in != null) Files.copy(in, target);
+        } catch (IOException ignored) {}
     }
 
     public static List<String> listAvailableImages() {
