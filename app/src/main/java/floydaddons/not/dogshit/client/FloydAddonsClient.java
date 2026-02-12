@@ -77,6 +77,7 @@ public class FloydAddonsClient implements ClientModInitializer {
                                 net.minecraft.client.render.entity.state.PlayerEntityRenderState,
                                 net.minecraft.client.render.entity.model.PlayerEntityModel>) entityRenderer;
                         registrationHelper.register(new ConeFeatureRenderer(ctx));
+                        registrationHelper.register(new CapeFeatureRenderer(ctx));
                     }
                 }
         );

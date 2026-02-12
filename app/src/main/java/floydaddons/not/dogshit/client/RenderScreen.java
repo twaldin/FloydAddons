@@ -15,8 +15,6 @@ import net.minecraft.util.Util;
 public class RenderScreen extends Screen {
     private final Screen parent;
 
-    private ButtonWidget coneHatToggle;
-    private ButtonWidget coneHatConfigButton;
     private ButtonWidget serverIdToggle;
     private ButtonWidget xrayToggle;
     private SliderWidget opacitySlider;
@@ -27,7 +25,7 @@ public class RenderScreen extends Screen {
     private ButtonWidget doneButton;
 
     private static final int BOX_WIDTH = 320;
-    private static final int BOX_HEIGHT = 220;
+    private static final int BOX_HEIGHT = 260;
     private static final int DRAG_BAR_HEIGHT = 18;
     private static final long FADE_DURATION_MS = 90;
     private static final int ROW_HEIGHT = 20;
@@ -68,33 +66,22 @@ public class RenderScreen extends Screen {
 
         int le = leftEdge();
 
-        // Row 0: Cone Hat toggle + Config
-        coneHatToggle = ButtonWidget.builder(Text.literal(coneHatLabel()), b -> {
-            RenderConfig.setFloydHatEnabled(!RenderConfig.isFloydHatEnabled());
-            b.setMessage(Text.literal(coneHatLabel()));
-            RenderConfig.save();
-        }).dimensions(le, rowY(0), MAIN_W, ROW_HEIGHT).build();
-
-        coneHatConfigButton = ButtonWidget.builder(Text.literal("Config"), b -> {
-            if (client != null) client.setScreen(new ConeHatScreen(this));
-        }).dimensions(le + MAIN_W + PAIR_GAP, rowY(0), SECONDARY_W, ROW_HEIGHT).build();
-
-        // Row 1: Server ID Hider
+        // Row 0: Server ID Hider
         serverIdToggle = ButtonWidget.builder(Text.literal(serverIdLabel()), b -> {
             RenderConfig.setServerIdHiderEnabled(!RenderConfig.isServerIdHiderEnabled());
             b.setMessage(Text.literal(serverIdLabel()));
             RenderConfig.save();
-        }).dimensions(le, rowY(1), FULL_W, ROW_HEIGHT).build();
+        }).dimensions(le, rowY(0), FULL_W, ROW_HEIGHT).build();
 
-        // Row 2: X-Ray toggle
+        // Row 1: X-Ray toggle
         xrayToggle = ButtonWidget.builder(Text.literal(xrayLabel()), b -> {
             RenderConfig.toggleXray();
             b.setMessage(Text.literal(xrayLabel()));
-        }).dimensions(le, rowY(2), FULL_W, ROW_HEIGHT).build();
+        }).dimensions(le, rowY(1), FULL_W, ROW_HEIGHT).build();
 
-        // Row 3: Opacity slider
+        // Row 2: Opacity slider
         opacitySlider = new SliderWidget(
-                le, rowY(3), FULL_W, ROW_HEIGHT,
+                le, rowY(2), FULL_W, ROW_HEIGHT,
                 Text.literal(opacityLabel()),
                 opacityToSlider(RenderConfig.getXrayOpacity())
         ) {
@@ -115,36 +102,34 @@ public class RenderScreen extends Screen {
             }
         };
 
-        // Row 4: Edit Blocks + Reload Blocks
+        // Row 3: Edit Blocks + Reload Blocks
         editBlocksButton = ButtonWidget.builder(Text.literal("Edit Blocks"), b -> {
             if (client != null) client.setScreen(new XrayEditorScreen(this));
-        }).dimensions(le, rowY(4), HALF_W, ROW_HEIGHT).build();
+        }).dimensions(le, rowY(3), HALF_W, ROW_HEIGHT).build();
 
         reloadBlocksButton = ButtonWidget.builder(Text.literal("Reload Blocks"), b -> {
             FloydAddonsConfig.loadXrayOpaque();
             if (RenderConfig.isXrayEnabled()) {
                 RenderConfig.rebuildChunks();
             }
-        }).dimensions(le + HALF_W + PAIR_GAP, rowY(4), HALF_W, ROW_HEIGHT).build();
+        }).dimensions(le + HALF_W + PAIR_GAP, rowY(3), HALF_W, ROW_HEIGHT).build();
 
-        // Row 5: Mob ESP toggle + Config
+        // Row 4: Mob ESP toggle + Config
         mobEspToggle = ButtonWidget.builder(Text.literal(mobEspLabel()), b -> {
             RenderConfig.toggleMobEsp();
             b.setMessage(Text.literal(mobEspLabel()));
             RenderConfig.save();
-        }).dimensions(le, rowY(5), MAIN_W, ROW_HEIGHT).build();
+        }).dimensions(le, rowY(4), MAIN_W, ROW_HEIGHT).build();
 
         mobEspConfigButton = ButtonWidget.builder(Text.literal("Config"), b -> {
             if (client != null) client.setScreen(new MobEspScreen(this));
-        }).dimensions(le + MAIN_W + PAIR_GAP, rowY(5), SECONDARY_W, ROW_HEIGHT).build();
+        }).dimensions(le + MAIN_W + PAIR_GAP, rowY(4), SECONDARY_W, ROW_HEIGHT).build();
 
         // Done
         doneButton = ButtonWidget.builder(Text.literal("Done"), b -> close())
                 .dimensions(panelX + (BOX_WIDTH - 100) / 2, panelY + BOX_HEIGHT - 30, 100, ROW_HEIGHT)
                 .build();
 
-        addDrawableChild(coneHatToggle);
-        addDrawableChild(coneHatConfigButton);
         addDrawableChild(serverIdToggle);
         addDrawableChild(xrayToggle);
         addDrawableChild(opacitySlider);
@@ -155,7 +140,6 @@ public class RenderScreen extends Screen {
         addDrawableChild(doneButton);
     }
 
-    private String coneHatLabel() { return "Cone Hat: " + (RenderConfig.isFloydHatEnabled() ? "ON" : "OFF"); }
     private String serverIdLabel() { return "Server ID Hider: " + (RenderConfig.isServerIdHiderEnabled() ? "ON" : "OFF"); }
     private String xrayLabel() { return "X-Ray: " + (RenderConfig.isXrayEnabled() ? "ON" : "OFF"); }
     private String opacityLabel() { return "X-Ray Opacity: " + Math.round(RenderConfig.getXrayOpacity() * 100) + "%"; }
@@ -217,8 +201,6 @@ public class RenderScreen extends Screen {
         context.fill(left, top, right, bottom, baseColor);
         InventoryHudRenderer.drawChromaBorder(context, left - 1, top - 1, right + 1, bottom + 1, guiAlpha);
 
-        styleButton(context, coneHatToggle, guiAlpha, mouseX, mouseY);
-        styleButton(context, coneHatConfigButton, guiAlpha, mouseX, mouseY);
         styleButton(context, serverIdToggle, guiAlpha, mouseX, mouseY);
         styleButton(context, xrayToggle, guiAlpha, mouseX, mouseY);
         styleSlider(context, opacitySlider, guiAlpha, mouseX, mouseY);
@@ -281,15 +263,13 @@ public class RenderScreen extends Screen {
 
     private void repositionWidgets() {
         int le = leftEdge();
-        coneHatToggle.setX(le);                coneHatToggle.setY(rowY(0));
-        coneHatConfigButton.setX(le + MAIN_W + PAIR_GAP); coneHatConfigButton.setY(rowY(0));
-        serverIdToggle.setX(le);               serverIdToggle.setY(rowY(1));
-        xrayToggle.setX(le);                   xrayToggle.setY(rowY(2));
-        opacitySlider.setX(le);                opacitySlider.setY(rowY(3));
-        editBlocksButton.setX(le);             editBlocksButton.setY(rowY(4));
-        reloadBlocksButton.setX(le + HALF_W + PAIR_GAP); reloadBlocksButton.setY(rowY(4));
-        mobEspToggle.setX(le);                 mobEspToggle.setY(rowY(5));
-        mobEspConfigButton.setX(le + MAIN_W + PAIR_GAP); mobEspConfigButton.setY(rowY(5));
+        serverIdToggle.setX(le);               serverIdToggle.setY(rowY(0));
+        xrayToggle.setX(le);                   xrayToggle.setY(rowY(1));
+        opacitySlider.setX(le);                opacitySlider.setY(rowY(2));
+        editBlocksButton.setX(le);             editBlocksButton.setY(rowY(3));
+        reloadBlocksButton.setX(le + HALF_W + PAIR_GAP); reloadBlocksButton.setY(rowY(3));
+        mobEspToggle.setX(le);                 mobEspToggle.setY(rowY(4));
+        mobEspConfigButton.setX(le + MAIN_W + PAIR_GAP); mobEspConfigButton.setY(rowY(4));
         doneButton.setX(panelX + (BOX_WIDTH - 100) / 2); doneButton.setY(panelY + BOX_HEIGHT - 30);
     }
 

@@ -27,6 +27,7 @@ public final class SkinManager {
 
     public static Identifier getCustomTexture(MinecraftClient mc) {
         if (mc == null) return null;
+        if (!SkinConfig.customEnabled()) return null;
         long now = System.currentTimeMillis();
         if (cachedTexture == null || now - lastLoad > RELOAD_MS) {
             loadTexture(mc);
