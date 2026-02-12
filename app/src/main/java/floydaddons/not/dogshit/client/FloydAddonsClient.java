@@ -29,6 +29,7 @@ public class FloydAddonsClient implements ClientModInitializer {
         StalkRenderer.register();
         MobEspRenderer.register();
         FloydAddonsCommand.register();
+        DiscordPresenceManager.start();
 
         openGuiKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.floydaddons.open_gui",
@@ -55,6 +56,8 @@ public class FloydAddonsClient implements ClientModInitializer {
             SkinManager.extractDefaultSkin(client);
             ServerIdTracker.tick(client);
             NpcTracker.tick();
+            CapeManager.tickAnimations();
+            DiscordPresenceManager.tick(client);
             if (client.player == null) {
                 return;
             }
@@ -83,6 +86,7 @@ public class FloydAddonsClient implements ClientModInitializer {
         );
 
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
+            DiscordPresenceManager.shutdown();
             FloydAddonsConfig.save();
         });
     }
