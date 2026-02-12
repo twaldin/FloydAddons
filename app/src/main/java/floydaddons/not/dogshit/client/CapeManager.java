@@ -111,8 +111,6 @@ public final class CapeManager {
         try {
             NativeImage img = NativeImage.read(Files.newInputStream(path));
             NativeImageBackedTexture tex = new NativeImageBackedTexture(() -> "floydaddons_cape_" + fileName, img);
-            // Use linear filtering + mipmaps so higher-res capes stay smooth instead of looking blocky.
-            tex.setFilter(true, true);
             Identifier id = Identifier.of(FloydAddonsClient.MOD_ID, "cape/" + fileName.toLowerCase().replaceAll("[^a-z0-9._-]", "_"));
             mc.getTextureManager().registerTexture(id, tex);
             float aspect = img.getWidth() / (float) img.getHeight();

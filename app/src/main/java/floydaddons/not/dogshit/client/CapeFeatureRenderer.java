@@ -3,6 +3,7 @@ package floydaddons.not.dogshit.client;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.render.RenderLayer;
+import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.command.OrderedRenderCommandQueue;
 import net.minecraft.client.render.entity.feature.FeatureRenderer;
 import net.minecraft.client.render.entity.feature.FeatureRendererContext;
@@ -32,7 +33,7 @@ public class CapeFeatureRenderer extends FeatureRenderer<PlayerEntityRenderState
         if (mc.player == null || state.id != mc.player.getId()) return;
 
         Identifier tex = CapeManager.getTexture(mc);
-        RenderLayer layer = RenderLayer.getEntityCutoutNoCull(tex);
+        RenderLayer layer = RenderLayers.entityCutoutNoCull(tex);
 
         matrices.push();
         // anchor to body
