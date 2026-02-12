@@ -3,7 +3,6 @@ package floydaddons.not.dogshit.client;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.decoration.ArmorStandEntity;
-import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Identifier;
 
 import java.util.ArrayList;
@@ -251,7 +250,6 @@ public final class MobEspManager {
      * For non-armor-stands: checks type ID, display name, custom name, NPC cache name.
      */
     public static boolean matches(Entity entity) {
-        if (entity instanceof PlayerEntity) return false;
         if (entity instanceof ArmorStandEntity as) {
             if (!as.hasCustomName() || as.getCustomName() == null) return false;
             String stripped = stripColorCodes(as.getCustomName().getString());
