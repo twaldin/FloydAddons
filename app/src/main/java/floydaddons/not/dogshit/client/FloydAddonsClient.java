@@ -16,8 +16,11 @@ public class FloydAddonsClient implements ClientModInitializer {
     public static final String MOD_ID = "floydaddons";
 
     private KeyBinding openGuiKey;
+    private KeyBinding clickGuiKey;
     private KeyBinding xrayToggleKey;
     private KeyBinding mobEspToggleKey;
+    private KeyBinding freecamToggleKey;
+    private KeyBinding freelookToggleKey;
     private static final KeyBinding.Category KEY_CATEGORY =
             KeyBinding.Category.create(Identifier.of(MOD_ID, "category"));
 
@@ -29,11 +32,19 @@ public class FloydAddonsClient implements ClientModInitializer {
         StalkRenderer.register();
         MobEspRenderer.register();
         FloydAddonsCommand.register();
+        DiscordPresenceManager.start();
 
         openGuiKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.floydaddons.open_gui",
                 InputUtil.Type.KEYSYM,
                 GLFW.GLFW_KEY_N,
+                KEY_CATEGORY
+        ));
+
+        clickGuiKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+                "key.floydaddons.click_gui",
+                InputUtil.Type.KEYSYM,
+                GLFW.GLFW_KEY_RIGHT_SHIFT,
                 KEY_CATEGORY
         ));
 
@@ -51,21 +62,46 @@ public class FloydAddonsClient implements ClientModInitializer {
                 KEY_CATEGORY
         ));
 
+        freecamToggleKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+                "key.floydaddons.toggle_freecam",
+                InputUtil.Type.KEYSYM,
+                GLFW.GLFW_KEY_F,
+                KEY_CATEGORY
+        ));
+
+        freelookToggleKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+                "key.floydaddons.toggle_freelook",
+                InputUtil.Type.KEYSYM,
+                GLFW.GLFW_KEY_V,
+                KEY_CATEGORY
+        ));
+
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             SkinManager.extractDefaultSkin(client);
             ServerIdTracker.tick(client);
             NpcTracker.tick();
+            CapeManager.tickAnimations();
+            DiscordPresenceManager.tick(client);
             if (client.player == null) {
                 return;
             }
             while (openGuiKey.wasPressed()) {
                 client.setScreen(new FloydAddonsScreen(Text.literal("FloydAddons")));
             }
+            while (clickGuiKey.wasPressed()) {
+                client.setScreen(new ClickGuiScreen());
+            }
             while (xrayToggleKey.wasPressed()) {
                 RenderConfig.toggleXray();
             }
             while (mobEspToggleKey.wasPressed()) {
                 RenderConfig.toggleMobEsp();
+            }
+            while (freecamToggleKey.wasPressed()) {
+                CameraConfig.toggleFreecam();
+            }
+            while (freelookToggleKey.wasPressed()) {
+                CameraConfig.toggleFreelook();
             }
         });
 
@@ -83,6 +119,7 @@ public class FloydAddonsClient implements ClientModInitializer {
         );
 
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
+            DiscordPresenceManager.shutdown();
             FloydAddonsConfig.save();
         });
     }
