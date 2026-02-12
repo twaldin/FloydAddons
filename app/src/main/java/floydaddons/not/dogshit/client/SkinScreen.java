@@ -7,17 +7,18 @@ import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Text;
 import net.minecraft.util.Util;
 
-import java.util.List;
-
 public class SkinScreen extends Screen {
     private final Screen parent;
-    private ButtonWidget selfToggle;
-    private ButtonWidget othersToggle;
+    private ButtonWidget customToggle;
+    private ButtonWidget customConfigButton;
+    private ButtonWidget capeToggle;
+    private ButtonWidget capeConfigButton;
+    private ButtonWidget coneHatToggle;
+    private ButtonWidget coneHatConfigButton;
     private ButtonWidget doneButton;
-    private ButtonWidget openFolderButton;
 
-    private static final int BOX_WIDTH = 320;
-    private static final int BOX_HEIGHT = 230;
+    private static final int BOX_WIDTH = 240;
+    private static final int BOX_HEIGHT = 190;
     private static final long FADE_DURATION_MS = 90;
     private long openStartMs;
     private boolean closing = false;
@@ -29,15 +30,15 @@ public class SkinScreen extends Screen {
     private double dragStartMouseX, dragStartMouseY;
     private int dragStartPanelX, dragStartPanelY;
 
-    // Dropdown state
-    private boolean dropdownOpen = false;
-    private List<String> availableSkins = List.of();
-    private int dropdownScroll = 0;
-    private static final int DROPDOWN_ROW_HEIGHT = 16;
-    private static final int DROPDOWN_MAX_VISIBLE = 5;
+    private static final int CONTROL_WIDTH = 220;
+    private static final int MAIN_W = 148;
+    private static final int SECONDARY_W = 68;
+    private static final int PAIR_GAP = 4;
+    private static final int ROW_HEIGHT = 20;
+    private static final int ROW_SPACING = 26; // a bit more breathing room
 
     public SkinScreen(Screen parent) {
-        super(Text.literal("Skin"));
+        super(Text.literal("Cosmetic"));
         this.parent = parent;
     }
 
@@ -51,52 +52,57 @@ public class SkinScreen extends Screen {
         panelX = savedX;
         panelY = savedY;
 
-        refreshSkinList();
+        int cx = panelX + (BOX_WIDTH - CONTROL_WIDTH) / 2;
+        // vertically center the stack of three rows inside the box
+        int rowsHeight = ROW_HEIGHT * 3 + ROW_SPACING * 2;
+        int cy = panelY + (BOX_HEIGHT - rowsHeight) / 2;
 
-        int cx = panelX + (BOX_WIDTH - 220) / 2;
-
-        selfToggle = ButtonWidget.builder(Text.literal(selfLabel()), b -> {
-            SkinConfig.setSelfEnabled(!SkinConfig.selfEnabled());
-            b.setMessage(Text.literal(selfLabel()));
+        customToggle = ButtonWidget.builder(Text.literal(customLabel()), b -> {
+            SkinConfig.setCustomEnabled(!SkinConfig.customEnabled());
+            b.setMessage(Text.literal(customLabel()));
             SkinConfig.save();
-            SkinManager.clearCache();
-        }).dimensions(cx, panelY + 25, 220, 20).build();
+        }).dimensions(cx, cy, MAIN_W, ROW_HEIGHT).build();
 
-        othersToggle = ButtonWidget.builder(Text.literal(othersLabel()), b -> {
-            SkinConfig.setOthersEnabled(!SkinConfig.othersEnabled());
-            b.setMessage(Text.literal(othersLabel()));
-            SkinConfig.save();
-            SkinManager.clearCache();
-        }).dimensions(cx, panelY + 55, 220, 20).build();
+        customConfigButton = ButtonWidget.builder(Text.literal("Config"), b -> {
+            if (client != null) client.setScreen(new SkinSettingsScreen(this));
+        }).dimensions(cx + MAIN_W + PAIR_GAP, cy, SECONDARY_W, ROW_HEIGHT).build();
 
-        openFolderButton = ButtonWidget.builder(Text.literal("Open skin folder"), b -> {
-            var dir = SkinManager.ensureExternalDir();
-            openPath(dir);
-        }).dimensions(cx, panelY + 85, 220, 20).build();
+        capeToggle = ButtonWidget.builder(Text.literal(capeLabel()), b -> {
+            RenderConfig.setCapeEnabled(!RenderConfig.isCapeEnabled());
+            b.setMessage(Text.literal(capeLabel()));
+            RenderConfig.save();
+        }).dimensions(cx, cy + ROW_SPACING * 1, MAIN_W, ROW_HEIGHT).build();
+
+        capeConfigButton = ButtonWidget.builder(Text.literal("Config"), b -> {
+            if (client != null) client.setScreen(new CapeScreen(this));
+        }).dimensions(cx + MAIN_W + PAIR_GAP, cy + ROW_SPACING * 1, SECONDARY_W, ROW_HEIGHT).build();
+
+        coneHatToggle = ButtonWidget.builder(Text.literal(coneHatLabel()), b -> {
+            RenderConfig.setFloydHatEnabled(!RenderConfig.isFloydHatEnabled());
+            b.setMessage(Text.literal(coneHatLabel()));
+            RenderConfig.save();
+        }).dimensions(cx, cy + ROW_SPACING * 2, MAIN_W, ROW_HEIGHT).build();
+
+        coneHatConfigButton = ButtonWidget.builder(Text.literal("Config"), b -> {
+            if (client != null) client.setScreen(new ConeHatScreen(this));
+        }).dimensions(cx + MAIN_W + PAIR_GAP, cy + ROW_SPACING * 2, SECONDARY_W, ROW_HEIGHT).build();
 
         doneButton = ButtonWidget.builder(Text.literal("Done"), b -> close())
-                .dimensions(panelX + (BOX_WIDTH - 100) / 2, panelY + BOX_HEIGHT - 30, 100, 20)
+                .dimensions(panelX + (BOX_WIDTH - 100) / 2, panelY + BOX_HEIGHT - 24, 100, 20)
                 .build();
 
-        addDrawableChild(selfToggle);
-        addDrawableChild(othersToggle);
-        addDrawableChild(openFolderButton);
+        addDrawableChild(customToggle);
+        addDrawableChild(customConfigButton);
+        addDrawableChild(capeToggle);
+        addDrawableChild(capeConfigButton);
+        addDrawableChild(coneHatToggle);
+        addDrawableChild(coneHatConfigButton);
         addDrawableChild(doneButton);
     }
 
-    private void refreshSkinList() {
-        availableSkins = SkinManager.listAvailableSkins();
-        dropdownScroll = 0;
-    }
-
-    private String selfLabel() { return "Apply to me: " + (SkinConfig.selfEnabled() ? "ON" : "OFF"); }
-    private String othersLabel() { return "Others: " + (SkinConfig.othersEnabled() ? "ON" : "OFF"); }
-
-    private String currentSkinLabel() {
-        String sel = SkinConfig.getSelectedSkin();
-        if (sel == null || sel.isEmpty()) return "No skin selected";
-        return sel;
-    }
+    private String customLabel() { return "Custom Skin: " + (SkinConfig.customEnabled() ? "ON" : "OFF"); }
+    private String capeLabel() { return "Cape: " + (RenderConfig.isCapeEnabled() ? "ON" : "OFF"); }
+    private String coneHatLabel() { return "Cone Hat: " + (RenderConfig.isFloydHatEnabled() ? "ON" : "OFF"); }
 
     @Override
     public void close() {
@@ -121,41 +127,6 @@ public class SkinScreen extends Screen {
         double mx = click.x();
         double my = click.y();
 
-        // Handle dropdown clicks first (higher priority)
-        if (dropdownOpen && click.button() == 0) {
-            int ddX = panelX + (BOX_WIDTH - 220) / 2;
-            int ddTop = panelY + 130;
-            int ddWidth = 220;
-
-            int visibleCount = Math.min(availableSkins.size(), DROPDOWN_MAX_VISIBLE);
-            int ddHeight = visibleCount * DROPDOWN_ROW_HEIGHT;
-
-            if (mx >= ddX && mx <= ddX + ddWidth && my >= ddTop && my <= ddTop + ddHeight) {
-                int rowIndex = (int) ((my - ddTop) / DROPDOWN_ROW_HEIGHT) + dropdownScroll;
-                if (rowIndex >= 0 && rowIndex < availableSkins.size()) {
-                    SkinConfig.setSelectedSkin(availableSkins.get(rowIndex));
-                    SkinConfig.save();
-                    SkinManager.clearCache();
-                    dropdownOpen = false;
-                    return true;
-                }
-            }
-            // Clicked outside dropdown, close it
-            dropdownOpen = false;
-            return true;
-        }
-
-        // Handle dropdown button click (the skin selector bar)
-        if (click.button() == 0) {
-            int ddBtnX = panelX + (BOX_WIDTH - 220) / 2;
-            int ddBtnY = panelY + 112;
-            if (mx >= ddBtnX && mx <= ddBtnX + 220 && my >= ddBtnY && my <= ddBtnY + 16) {
-                refreshSkinList();
-                dropdownOpen = !dropdownOpen;
-                return true;
-            }
-        }
-
         // Drag bar
         if (click.button() == 0 && mx >= panelX && mx <= panelX + BOX_WIDTH && my >= panelY && my <= panelY + DRAG_BAR_HEIGHT) {
             dragging = true;
@@ -166,22 +137,6 @@ public class SkinScreen extends Screen {
             return true;
         }
         return super.mouseClicked(click, ignoresInput);
-    }
-
-    @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
-        if (dropdownOpen && availableSkins.size() > DROPDOWN_MAX_VISIBLE) {
-            int ddX = panelX + (BOX_WIDTH - 220) / 2;
-            int ddTop = panelY + 130;
-            int ddWidth = 220;
-            int ddHeight = DROPDOWN_MAX_VISIBLE * DROPDOWN_ROW_HEIGHT;
-            if (mouseX >= ddX && mouseX <= ddX + ddWidth && mouseY >= ddTop && mouseY <= ddTop + ddHeight) {
-                dropdownScroll -= (int) verticalAmount;
-                dropdownScroll = Math.max(0, Math.min(dropdownScroll, availableSkins.size() - DROPDOWN_MAX_VISIBLE));
-                return true;
-            }
-        }
-        return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
     }
 
     @Override
@@ -209,13 +164,14 @@ public class SkinScreen extends Screen {
     }
 
     private void repositionWidgets() {
-        int cx = panelX + (BOX_WIDTH - 220) / 2;
-        selfToggle.setX(cx);
-        selfToggle.setY(panelY + 25);
-        othersToggle.setX(cx);
-        othersToggle.setY(panelY + 55);
-        openFolderButton.setX(cx);
-        openFolderButton.setY(panelY + 85);
+        int cx = panelX + (BOX_WIDTH - CONTROL_WIDTH) / 2;
+        int cy = panelY + 14;
+        customToggle.setX(cx);                 customToggle.setY(cy);
+        customConfigButton.setX(cx + MAIN_W + PAIR_GAP); customConfigButton.setY(cy);
+        capeToggle.setX(cx);                   capeToggle.setY(cy + ROW_SPACING * 1);
+        capeConfigButton.setX(cx + MAIN_W + PAIR_GAP); capeConfigButton.setY(cy + ROW_SPACING * 1);
+        coneHatToggle.setX(cx);                coneHatToggle.setY(cy + ROW_SPACING * 2);
+        coneHatConfigButton.setX(cx + MAIN_W + PAIR_GAP); coneHatConfigButton.setY(cy + ROW_SPACING * 2);
         doneButton.setX(panelX + (BOX_WIDTH - 100) / 2);
         doneButton.setY(panelY + BOX_HEIGHT - 30);
     }
@@ -249,104 +205,15 @@ public class SkinScreen extends Screen {
         InventoryHudRenderer.drawChromaBorder(context, left - 1, top - 1, right + 1, bottom + 1, guiAlpha);
 
         // Buttons
-        styleButton(context, selfToggle, guiAlpha, mouseX, mouseY);
-        styleButton(context, othersToggle, guiAlpha, mouseX, mouseY);
-        styleButton(context, openFolderButton, guiAlpha, mouseX, mouseY);
+        styleButton(context, customToggle, guiAlpha, mouseX, mouseY);
+        styleButton(context, customConfigButton, guiAlpha, mouseX, mouseY);
+        styleButton(context, capeToggle, guiAlpha, mouseX, mouseY);
+        styleButton(context, capeConfigButton, guiAlpha, mouseX, mouseY);
+        styleButton(context, coneHatToggle, guiAlpha, mouseX, mouseY);
+        styleButton(context, coneHatConfigButton, guiAlpha, mouseX, mouseY);
         styleButton(context, doneButton, guiAlpha, mouseX, mouseY);
 
-        // Skin selector dropdown
-        renderSkinDropdown(context, mouseX, mouseY, guiAlpha);
-
-        // Hint text
-        String hint = "Drop any .png skin file into the skin folder.";
-        int hintWidth = textRenderer.getWidth(hint);
-        int hintX = panelX + (BOX_WIDTH - hintWidth) / 2;
-        int hintY = panelY + BOX_HEIGHT - 50;
-        context.drawTextWithShadow(textRenderer, hint, hintX, hintY, applyAlpha(0xFF888888, guiAlpha));
-
         matrices.popMatrix();
-    }
-
-    private void renderSkinDropdown(DrawContext context, int mouseX, int mouseY, float guiAlpha) {
-        int ddX = panelX + (BOX_WIDTH - 220) / 2;
-        int ddY = panelY + 112;
-        int ddW = 220;
-        int ddH = 16;
-
-        // Dropdown button bar
-        boolean barHover = mouseX >= ddX && mouseX <= ddX + ddW && mouseY >= ddY && mouseY <= ddY + ddH;
-        int barFill = applyAlpha(barHover ? 0xFF444444 : 0xFF333333, guiAlpha);
-        context.fill(ddX, ddY, ddX + ddW, ddY + ddH, barFill);
-        InventoryHudRenderer.drawChromaBorder(context, ddX - 1, ddY - 1, ddX + ddW + 1, ddY + ddH + 1, guiAlpha);
-
-        // Current selection label + arrow
-        String label = currentSkinLabel();
-        String arrow = dropdownOpen ? " \u25B2" : " \u25BC";
-        int maxLabelWidth = ddW - textRenderer.getWidth(arrow) - 8;
-        // Truncate label if too long
-        while (textRenderer.getWidth(label) > maxLabelWidth && label.length() > 3) {
-            label = label.substring(0, label.length() - 1);
-        }
-        if (textRenderer.getWidth(label + arrow) > ddW - 4) {
-            label = label.substring(0, Math.max(0, label.length() - 3)) + "...";
-        }
-        String display = label + arrow;
-        int textW = textRenderer.getWidth(display);
-        int textX = ddX + (ddW - textW) / 2;
-        int textY = ddY + (ddH - textRenderer.fontHeight) / 2;
-        int chroma = applyAlpha(resolveTextColor((System.currentTimeMillis() % 4000) / 4000f), guiAlpha);
-        context.drawTextWithShadow(textRenderer, display, textX, textY, chroma);
-
-        // Dropdown list
-        if (dropdownOpen && !availableSkins.isEmpty()) {
-            int listTop = ddY + ddH + 2;
-            int visibleCount = Math.min(availableSkins.size(), DROPDOWN_MAX_VISIBLE);
-            int listHeight = visibleCount * DROPDOWN_ROW_HEIGHT;
-
-            // Background
-            context.fill(ddX, listTop, ddX + ddW, listTop + listHeight, applyAlpha(0xDD000000, guiAlpha));
-            InventoryHudRenderer.drawChromaBorder(context, ddX - 1, listTop - 1, ddX + ddW + 1, listTop + listHeight + 1, guiAlpha);
-
-            String selected = SkinConfig.getSelectedSkin();
-            for (int i = 0; i < visibleCount; i++) {
-                int idx = i + dropdownScroll;
-                if (idx >= availableSkins.size()) break;
-
-                String skinName = availableSkins.get(idx);
-                int rowY = listTop + i * DROPDOWN_ROW_HEIGHT;
-                boolean rowHover = mouseX >= ddX && mouseX <= ddX + ddW && mouseY >= rowY && mouseY <= rowY + DROPDOWN_ROW_HEIGHT;
-                boolean isSelected = skinName.equals(selected);
-
-                if (rowHover) {
-                    context.fill(ddX + 1, rowY, ddX + ddW - 1, rowY + DROPDOWN_ROW_HEIGHT, applyAlpha(0xFF555555, guiAlpha));
-                } else if (isSelected) {
-                    context.fill(ddX + 1, rowY, ddX + ddW - 1, rowY + DROPDOWN_ROW_HEIGHT, applyAlpha(0xFF3A3A3A, guiAlpha));
-                }
-
-                // Truncate name if needed
-                String name = skinName;
-                while (textRenderer.getWidth(name) > ddW - 10 && name.length() > 3) {
-                    name = name.substring(0, name.length() - 1);
-                }
-
-                int nameColor = isSelected ? chroma : applyAlpha(0xFFCCCCCC, guiAlpha);
-                context.drawTextWithShadow(textRenderer, name, ddX + 5, rowY + (DROPDOWN_ROW_HEIGHT - textRenderer.fontHeight) / 2, nameColor);
-            }
-
-            // Scroll indicator
-            if (availableSkins.size() > DROPDOWN_MAX_VISIBLE) {
-                int scrollBarH = Math.max(4, (int) ((float) visibleCount / availableSkins.size() * listHeight));
-                int scrollBarY = listTop + (int) ((float) dropdownScroll / (availableSkins.size() - visibleCount) * (listHeight - scrollBarH));
-                context.fill(ddX + ddW - 3, scrollBarY, ddX + ddW - 1, scrollBarY + scrollBarH, applyAlpha(0xFF888888, guiAlpha));
-            }
-        } else if (dropdownOpen && availableSkins.isEmpty()) {
-            int listTop = ddY + ddH + 2;
-            context.fill(ddX, listTop, ddX + ddW, listTop + DROPDOWN_ROW_HEIGHT, applyAlpha(0xDD000000, guiAlpha));
-            InventoryHudRenderer.drawChromaBorder(context, ddX - 1, listTop - 1, ddX + ddW + 1, listTop + DROPDOWN_ROW_HEIGHT + 1, guiAlpha);
-            String empty = "No skins found";
-            int ew = textRenderer.getWidth(empty);
-            context.drawTextWithShadow(textRenderer, empty, ddX + (ddW - ew) / 2, listTop + (DROPDOWN_ROW_HEIGHT - textRenderer.fontHeight) / 2, applyAlpha(0xFF888888, guiAlpha));
-        }
     }
 
     private void styleButton(DrawContext context, ButtonWidget button, float alpha, int mouseX, int mouseY) {

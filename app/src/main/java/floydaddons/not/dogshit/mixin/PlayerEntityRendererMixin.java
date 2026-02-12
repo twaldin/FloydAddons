@@ -22,6 +22,7 @@ public class PlayerEntityRendererMixin {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.getSession() == null) return;
         if (mc.player == null) return;
+        if (!SkinConfig.customEnabled()) return;
         boolean isSelf = state.id == mc.player.getId();
         boolean use = isSelf ? SkinConfig.selfEnabled() : SkinConfig.othersEnabled();
         if (!use) return;

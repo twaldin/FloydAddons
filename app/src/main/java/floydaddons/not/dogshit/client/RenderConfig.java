@@ -16,6 +16,7 @@ public final class RenderConfig {
     private static int inventoryHudY = 12;
     private static float inventoryHudScale = 1.1f;
     private static boolean floydHatEnabled = false;
+    private static boolean capeEnabled = false;
     private static float coneHatHeight = 0.45f;
     private static float coneHatRadius = 0.25f;
     private static float coneHatYOffset = -0.5f;
@@ -28,6 +29,7 @@ public final class RenderConfig {
     private static int buttonBorderColor = 0xFFFFFFFF;
     private static int buttonTextColor = 0xFFFFFFFF;
     private static String selectedConeImage = "";
+    private static String selectedCapeImage = "";
     private static boolean customScoreboardEnabled = false;
     private static int customScoreboardX = -1;
     private static int customScoreboardY = -1;
@@ -58,6 +60,8 @@ public final class RenderConfig {
 
     public static boolean isFloydHatEnabled() { return floydHatEnabled; }
     public static void setFloydHatEnabled(boolean v) { floydHatEnabled = v; }
+    public static boolean isCapeEnabled() { return capeEnabled; }
+    public static void setCapeEnabled(boolean v) { capeEnabled = v; }
 
     public static float getConeHatHeight() { return coneHatHeight; }
     public static void setConeHatHeight(float v) { coneHatHeight = Math.max(0.1f, Math.min(1.5f, v)); }
@@ -94,6 +98,8 @@ public final class RenderConfig {
 
     public static String getSelectedConeImage() { return selectedConeImage; }
     public static void setSelectedConeImage(String v) { selectedConeImage = v != null ? v : ""; }
+    public static String getSelectedCapeImage() { return selectedCapeImage; }
+    public static void setSelectedCapeImage(String v) { selectedCapeImage = v != null ? v : ""; }
 
     public static boolean isCustomScoreboardEnabled() { return customScoreboardEnabled; }
     public static void setCustomScoreboardEnabled(boolean v) { customScoreboardEnabled = v; }

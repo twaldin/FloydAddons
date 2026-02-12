@@ -79,6 +79,7 @@ public final class FloydAddonsConfig {
         data.nickHiderEnabled = NickHiderConfig.isEnabled();
         data.nickname = NickHiderConfig.getNickname();
         // Skin
+        data.skinCustomEnabled = SkinConfig.customEnabled();
         data.skinSelfEnabled = SkinConfig.selfEnabled();
         data.skinOthersEnabled = SkinConfig.othersEnabled();
         data.selectedSkin = SkinConfig.getSelectedSkin();
@@ -88,6 +89,7 @@ public final class FloydAddonsConfig {
         data.inventoryHudY = RenderConfig.getInventoryHudY();
         data.inventoryHudScale = RenderConfig.getInventoryHudScale();
         data.floydHatEnabled = RenderConfig.isFloydHatEnabled();
+        data.capeEnabled = RenderConfig.isCapeEnabled();
         data.coneHatHeight = RenderConfig.getConeHatHeight();
         data.coneHatRadius = RenderConfig.getConeHatRadius();
         data.coneHatYOffset = RenderConfig.getConeHatYOffset();
@@ -99,6 +101,7 @@ public final class FloydAddonsConfig {
         data.guiBorderColor = RenderConfig.getGuiBorderColor();
         data.buttonBorderColor = RenderConfig.getButtonBorderColor();
         data.buttonTextColor = RenderConfig.getButtonTextColor();
+        data.selectedCapeImage = RenderConfig.getSelectedCapeImage();
         data.selectedConeImage = RenderConfig.getSelectedConeImage();
         data.customScoreboardEnabled = RenderConfig.isCustomScoreboardEnabled();
         data.customScoreboardX = RenderConfig.getCustomScoreboardX();
@@ -228,6 +231,7 @@ public final class FloydAddonsConfig {
     }
 
     private static void loadSkin(Data data) {
+        SkinConfig.setCustomEnabled(data.skinCustomEnabled);
         SkinConfig.setSelfEnabled(data.skinSelfEnabled);
         SkinConfig.setOthersEnabled(data.skinOthersEnabled);
         if (data.selectedSkin != null) SkinConfig.setSelectedSkin(data.selectedSkin);
@@ -239,6 +243,7 @@ public final class FloydAddonsConfig {
         RenderConfig.setInventoryHudY(data.inventoryHudY);
         RenderConfig.setInventoryHudScale(data.inventoryHudScale);
         RenderConfig.setFloydHatEnabled(data.floydHatEnabled);
+        RenderConfig.setCapeEnabled(data.capeEnabled);
         if (data.coneHatHeight > 0) RenderConfig.setConeHatHeight(data.coneHatHeight);
         if (data.coneHatRadius > 0) RenderConfig.setConeHatRadius(data.coneHatRadius);
         if (data.coneHatYOffset != 0) RenderConfig.setConeHatYOffset(data.coneHatYOffset);
@@ -250,6 +255,7 @@ public final class FloydAddonsConfig {
         RenderConfig.setGuiBorderColor(data.guiBorderColor);
         RenderConfig.setButtonBorderColor(data.buttonBorderColor);
         RenderConfig.setButtonTextColor(data.buttonTextColor);
+        if (data.selectedCapeImage != null) RenderConfig.setSelectedCapeImage(data.selectedCapeImage);
         if (data.selectedConeImage != null) RenderConfig.setSelectedConeImage(data.selectedConeImage);
         RenderConfig.setCustomScoreboardEnabled(data.customScoreboardEnabled);
         RenderConfig.setCustomScoreboardX(data.customScoreboardX);
@@ -271,6 +277,7 @@ public final class FloydAddonsConfig {
         boolean nickHiderEnabled;
         String nickname;
         // Skin
+        boolean skinCustomEnabled = true;
         boolean skinSelfEnabled;
         boolean skinOthersEnabled;
         String selectedSkin;
@@ -280,6 +287,7 @@ public final class FloydAddonsConfig {
         int inventoryHudY;
         float inventoryHudScale;
         boolean floydHatEnabled;
+        boolean capeEnabled;
         float coneHatHeight;
         float coneHatRadius;
         float coneHatYOffset;
@@ -291,6 +299,7 @@ public final class FloydAddonsConfig {
         int guiBorderColor = RenderConfig.getGuiBorderColor();
         int buttonBorderColor = RenderConfig.getButtonBorderColor();
         int buttonTextColor = RenderConfig.getButtonTextColor();
+        String selectedCapeImage;
         String selectedConeImage;
         boolean customScoreboardEnabled;
         int customScoreboardX;

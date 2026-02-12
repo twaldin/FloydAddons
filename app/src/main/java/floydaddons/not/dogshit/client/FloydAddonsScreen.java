@@ -72,7 +72,7 @@ public class FloydAddonsScreen extends Screen {
 
         labels.clear();
         // positions filled at render-time; placeholder zeroes
-        labels.add(new LabelItem("Skin", 0, 0));
+        labels.add(new LabelItem("Cosmetic", 0, 0));
         labels.add(new LabelItem("Render", 0, 0));
         labels.add(new LabelItem("Neck Hider", 0, 0));
     }
@@ -299,7 +299,7 @@ public class FloydAddonsScreen extends Screen {
                     if (client != null) {
                         client.setScreen(new RenderScreen(this));
                         return true;
-                    }} else if ("Skin".equals(label.text)) {
+                    }} else if ("Cosmetic".equals(label.text)) {
                     if (client != null) {
                         client.setScreen(new SkinScreen(this));
                         return true;
