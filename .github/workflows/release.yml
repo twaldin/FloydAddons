@@ -71,14 +71,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
 
       - name: Build for 1.21.10
-        run: ./gradlew clean build --no-daemon -Pmod_version=${{ steps.version.outputs.version }}
+        run: ./gradlew clean build --no-daemon -Pmod_version=${{ steps.version.outputs.version }}-mc1.21.10
 
       - name: Upload build artifact
         if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: floydaddons-${{ steps.version.outputs.version }}-mc1.21.10
-          path: app/build/libs/floydaddons-${{ steps.version.outputs.version }}.jar
+          path: app/build/libs/floydaddons-${{ steps.version.outputs.version }}-mc1.21.10.jar
 
       - name: Create GitHub Release
         if: github.event_name == 'push'
@@ -91,6 +91,6 @@ jobs:
 
             ---
             **Minecraft 1.21.10**
-          files: app/build/libs/floydaddons-${{ steps.version.outputs.version }}.jar
+          files: app/build/libs/floydaddons-${{ steps.version.outputs.version }}-mc1.21.10.jar
           draft: false
           prerelease: false
