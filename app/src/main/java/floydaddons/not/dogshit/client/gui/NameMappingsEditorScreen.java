@@ -59,6 +59,9 @@ public class NameMappingsEditorScreen extends Screen {
     private TextFieldWidget addTextField = null;
     private ButtonWidget addSaveButton = null;
 
+    // Name reveal state
+    private final Set<String> revealedNames = new HashSet<>();
+
     // Cached data
     private List<Map.Entry<String, String>> activeMappings = new ArrayList<>();
     private List<String> onlinePlayers = new ArrayList<>();
@@ -108,18 +111,29 @@ public class NameMappingsEditorScreen extends Screen {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.getNetworkHandler() == null) return Collections.emptyList();
         Map<String, String> active = NickHiderConfig.getNameMappings();
+        String selfName = mc.player != null ? mc.player.getGameProfile().name() : null;
         List<String> result = new ArrayList<>();
         for (var entry : mc.getNetworkHandler().getPlayerList()) {
+            if (!isRealPlayerEntry(entry)) continue;
             String name = entry.getProfile().name();
-            if (name == null || name.isEmpty()) continue;
-            // Filter out server formatting fake players (e.g. !A-a, !CMP-xxx)
-            if (name.startsWith("!")) continue;
+            if (selfName != null && name.equalsIgnoreCase(selfName)) continue;
             if (!active.containsKey(name)) {
                 result.add(name);
             }
         }
         result.sort(String.CASE_INSENSITIVE_ORDER);
         return result;
+    }
+
+    private static boolean isRealPlayerEntry(net.minecraft.client.network.PlayerListEntry entry) {
+        String name = entry.getProfile().name();
+        if (name == null || name.length() < 3 || name.length() > 16) return false;
+        for (int i = 0; i < name.length(); i++) {
+            char c = name.charAt(i);
+            if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_')) return false;
+        }
+        java.util.UUID id = entry.getProfile().id();
+        return id != null && id.version() == 4;
     }
 
     private Identifier getPlayerSkinTexture(String playerName) {
@@ -271,8 +285,10 @@ public class NameMappingsEditorScreen extends Screen {
                     drawPlayerHead(context, skin, headX, headY, headSize);
                 }
 
-                // "OriginalIGN -> FakeName"
-                String mappingText = ign + " \u2192 " + fakeName;
+                // "OriginalIGN -> FakeName" (hidden by default)
+                boolean revealed = revealedNames.contains(ign);
+                String displayIgn = revealed ? ign : "*****";
+                String mappingText = displayIgn + " \u2192 " + fakeName;
                 int textX = cLeft + 14;
                 int textY = y + (ROW_HEIGHT - textRenderer.fontHeight) / 2;
                 context.drawTextWithShadow(textRenderer, mappingText, textX, textY, applyAlpha(0xFFFFFFFF, guiAlpha));
@@ -416,9 +432,20 @@ public class NameMappingsEditorScreen extends Screen {
                         && my >= removeBtnY && my <= removeBtnY + BUTTON_SIZE) {
                     NickHiderConfig.removeNameMapping(entry.getKey());
                     FloydAddonsConfig.saveNameMappings();
+                    revealedNames.remove(entry.getKey());
                     refreshData();
                     clearAddState();
                     clampScroll();
+                    return true;
+                }
+                // Click on label area toggles name reveal
+                int labelLeft = cLeft + 14;
+                int labelRight = removeBtnX - 4;
+                int labelTop = y + (ROW_HEIGHT - textRenderer.fontHeight) / 2;
+                int labelBottom = labelTop + textRenderer.fontHeight;
+                if (mx >= labelLeft && mx <= labelRight && my >= labelTop && my <= labelBottom) {
+                    String key = entry.getKey();
+                    if (!revealedNames.remove(key)) revealedNames.add(key);
                     return true;
                 }
                 y += ROW_SPACING;

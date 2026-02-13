@@ -136,14 +136,16 @@ public final class ScoreboardHudRenderer implements HudRenderCallback {
         int sw = mc.getWindow().getScaledWidth();
         int sh = mc.getWindow().getScaledHeight();
 
-        // Default to right-aligned, vertically centered (like vanilla)
+        // Position stores bottom-right corner so scoreboard stays right-anchored
         if (RenderConfig.getCustomScoreboardX() < 0 || RenderConfig.getCustomScoreboardY() < 0) {
-            RenderConfig.setCustomScoreboardX(sw - boxWidth - 1);
-            RenderConfig.setCustomScoreboardY(sh / 2 - boxHeight / 2);
+            RenderConfig.setCustomScoreboardX(sw - 1);
+            RenderConfig.setCustomScoreboardY(sh / 2 + boxHeight / 2);
         }
 
-        int x = clamp(RenderConfig.getCustomScoreboardX(), 0, sw - boxWidth);
-        int y = clamp(RenderConfig.getCustomScoreboardY(), 0, sh - boxHeight);
+        int brX = clamp(RenderConfig.getCustomScoreboardX(), boxWidth, sw);
+        int brY = clamp(RenderConfig.getCustomScoreboardY(), boxHeight, sh);
+        int x = brX - boxWidth;
+        int y = brY - boxHeight;
 
         // Background
         int radius = RenderConfig.getHudCornerRadius();
