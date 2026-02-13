@@ -119,6 +119,8 @@ public final class FloydAddonsConfig {
         data.buttonTextFadeEnabled = RenderConfig.isButtonTextFadeEnabled();
         data.buttonBorderFadeEnabled = RenderConfig.isButtonBorderFadeEnabled();
         data.guiBorderFadeEnabled = RenderConfig.isGuiBorderFadeEnabled();
+        data.customTimeEnabled = RenderConfig.isCustomTimeEnabled();
+        data.customTimeValue = RenderConfig.getCustomTimeValue();
         data.guiBorderColor = RenderConfig.getGuiBorderColor();
         data.buttonBorderColor = RenderConfig.getButtonBorderColor();
         data.buttonTextColor = RenderConfig.getButtonTextColor();
@@ -336,6 +338,8 @@ public final class FloydAddonsConfig {
         RenderConfig.setButtonTextFadeEnabled(data.buttonTextFadeEnabled);
         RenderConfig.setButtonBorderFadeEnabled(data.buttonBorderFadeEnabled);
         RenderConfig.setGuiBorderFadeEnabled(data.guiBorderFadeEnabled);
+        RenderConfig.setCustomTimeEnabled(data.customTimeEnabled);
+        RenderConfig.setCustomTimeValue(data.customTimeValue);
         RenderConfig.setGuiBorderColor(data.guiBorderColor);
         RenderConfig.setButtonBorderColor(data.buttonBorderColor);
         RenderConfig.setButtonTextColor(data.buttonTextColor);
@@ -417,6 +421,8 @@ public final class FloydAddonsConfig {
         boolean buttonTextFadeEnabled;
         boolean buttonBorderFadeEnabled;
         boolean guiBorderFadeEnabled;
+        boolean customTimeEnabled;
+        float customTimeValue = 50f;
         int guiBorderColor = RenderConfig.getGuiBorderColor();
         int buttonBorderColor = RenderConfig.getButtonBorderColor();
         int buttonTextColor = RenderConfig.getButtonTextColor();

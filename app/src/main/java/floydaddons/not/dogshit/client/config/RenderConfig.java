@@ -38,6 +38,8 @@ public final class RenderConfig {
     private static boolean buttonTextFadeEnabled = false;
     private static boolean buttonBorderFadeEnabled = false;
     private static boolean guiBorderFadeEnabled = false;
+    private static boolean customTimeEnabled = false;
+    private static float customTimeValue = 50f; // 0-100 slider
     private static int guiBorderColor = 0xFFFFFFFF;
     private static int buttonBorderColor = 0xFFFFFFFF;
     private static int buttonTextColor = 0xFFFFFFFF;
@@ -151,6 +153,37 @@ public final class RenderConfig {
 
     public static int getButtonTextFadeColor() { return ensureOpaque(buttonTextFadeColor); }
     public static void setButtonTextFadeColor(int color) { buttonTextFadeColor = ensureOpaque(color); }
+
+    public static boolean isCustomTimeEnabled() { return customTimeEnabled; }
+    public static void setCustomTimeEnabled(boolean v) { customTimeEnabled = v; }
+    public static float getCustomTimeValue() { return customTimeValue; }
+    public static void setCustomTimeValue(float v) { customTimeValue = Math.max(0f, Math.min(100f, v)); }
+    public static long getCustomTimeTicks() {
+        // Map 0-100 -> 0-23999 (vanilla day)
+        return (long) Math.round((customTimeValue / 100f) * 23999L);
+    }
+
+    /** Applies the custom time to the given properties via reflection (handles mapping differences). */
+    public static void applyCustomTime(net.minecraft.world.MutableWorldProperties props) {
+        if (props == null) return;
+        long t = getCustomTimeTicks();
+        try {
+            if (props instanceof floydaddons.not.dogshit.mixin.ClientWorldPropertiesAccessor acc) {
+                acc.floydaddons$setTimeOfDay(t);
+                acc.floydaddons$setTime(t);
+                return;
+            }
+        } catch (Exception ignored) {}
+        try {
+            var m = props.getClass().getMethod("setTimeOfDay", long.class);
+            m.invoke(props, t);
+            return;
+        } catch (Exception ignored) {}
+        try {
+            var m = props.getClass().getMethod("setTime", long.class);
+            m.invoke(props, t);
+        } catch (Exception ignored) {}
+    }
 
     public static String getSelectedConeImage() { return selectedConeImage; }
     public static void setSelectedConeImage(String v) { selectedConeImage = v != null ? v : ""; }

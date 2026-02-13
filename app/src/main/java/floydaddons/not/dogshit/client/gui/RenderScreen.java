@@ -34,11 +34,13 @@ public class RenderScreen extends Screen {
     private ButtonWidget mobEspConfigButton;
     private ButtonWidget hidersButton;
     private ButtonWidget animationsButton;
+    private ButtonWidget timeToggle;
+    private SliderWidget timeSlider;
     private ButtonWidget stalkButton;
     private ButtonWidget doneButton;
 
     private static final int BOX_WIDTH = 320;
-    private static final int BOX_HEIGHT = 330;
+    private static final int BOX_HEIGHT = 380;
     private static final int DRAG_BAR_HEIGHT = 18;
     private static final long FADE_DURATION_MS = 90;
     private static final int ROW_HEIGHT = 20;
@@ -150,13 +152,33 @@ public class RenderScreen extends Screen {
             if (client != null) client.setScreen(new AnimationsScreen(this));
         }).dimensions(le + HALF_W + PAIR_GAP, rowY(8), HALF_W, ROW_HEIGHT).build();
 
-        // Row 9: Stalk Player
+        // Row 9: Client Time slider + toggle
+        timeToggle = ButtonWidget.builder(Text.literal(timeToggleLabel()), b -> {
+            RenderConfig.setCustomTimeEnabled(!RenderConfig.isCustomTimeEnabled());
+            b.setMessage(Text.literal(timeToggleLabel()));
+            RenderConfig.save();
+        }).dimensions(le, rowY(9), HALF_W, ROW_HEIGHT).build();
+
+        timeSlider = new SliderWidget(
+                le + HALF_W + PAIR_GAP, rowY(9), HALF_W, ROW_HEIGHT,
+                Text.literal(timeSliderLabel()),
+                RenderConfig.getCustomTimeValue() / 100f
+        ) {
+            @Override protected void updateMessage() { setMessage(Text.literal(timeSliderLabel())); }
+            @Override protected void applyValue() {
+                RenderConfig.setCustomTimeValue((float) (this.value * 100f));
+                RenderConfig.save();
+            }
+            @Override public void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {}
+        };
+
+        // Row 10: Stalk Player
         stalkButton = ButtonWidget.builder(Text.literal(stalkLabel()), b -> {
             if (StalkManager.isEnabled()) {
                 StalkManager.disable();
             }
             b.setMessage(Text.literal(stalkLabel()));
-        }).dimensions(le, rowY(9), FULL_W, ROW_HEIGHT).build();
+        }).dimensions(le, rowY(10), FULL_W, ROW_HEIGHT).build();
 
         // Done
         doneButton = ButtonWidget.builder(Text.literal("Done"), b -> close())
@@ -172,6 +194,8 @@ public class RenderScreen extends Screen {
         addDrawableChild(mobEspConfigButton);
         addDrawableChild(hidersButton);
         addDrawableChild(animationsButton);
+        addDrawableChild(timeToggle);
+        addDrawableChild(timeSlider);
         addDrawableChild(stalkButton);
         addDrawableChild(doneButton);
     }
@@ -180,6 +204,8 @@ public class RenderScreen extends Screen {
     private String xrayLabel() { return "X-Ray: " + (RenderConfig.isXrayEnabled() ? "ON" : "OFF"); }
     private String opacityLabel() { return "X-Ray Opacity: " + Math.round(RenderConfig.getXrayOpacity() * 100) + "%"; }
     private String mobEspLabel() { return "Mob ESP: " + (RenderConfig.isMobEspEnabled() ? "ON" : "OFF"); }
+    private String timeToggleLabel() { return "Time Changer: " + (RenderConfig.isCustomTimeEnabled() ? "ON" : "OFF"); }
+    private String timeSliderLabel() { return "Time: " + Math.round(RenderConfig.getCustomTimeValue()) + "%"; }
     private String stalkLabel() {
         if (StalkManager.isEnabled()) return "Stalk: " + StalkManager.getTargetName() + " (click to disable)";
         return "Stalk: OFF (use /fa stalk <name>)";
@@ -243,13 +269,15 @@ public class RenderScreen extends Screen {
 
         styleButton(context, serverIdToggle, guiAlpha, mouseX, mouseY);
         styleButton(context, xrayToggle, guiAlpha, mouseX, mouseY);
-        styleSlider(context, opacitySlider, guiAlpha, mouseX, mouseY);
+        styleSlider(context, opacitySlider, guiAlpha, mouseX, mouseY, RenderConfig.getXrayOpacity());
         styleButton(context, editBlocksButton, guiAlpha, mouseX, mouseY);
         styleButton(context, reloadBlocksButton, guiAlpha, mouseX, mouseY);
         styleButton(context, mobEspToggle, guiAlpha, mouseX, mouseY);
         styleButton(context, mobEspConfigButton, guiAlpha, mouseX, mouseY);
         styleButton(context, hidersButton, guiAlpha, mouseX, mouseY);
         styleButton(context, animationsButton, guiAlpha, mouseX, mouseY);
+        styleButton(context, timeToggle, guiAlpha, mouseX, mouseY);
+        styleSlider(context, timeSlider, guiAlpha, mouseX, mouseY, RenderConfig.getCustomTimeValue() / 100f);
         stalkButton.setMessage(Text.literal(stalkLabel()));
         styleButton(context, stalkButton, guiAlpha, mouseX, mouseY);
         styleButton(context, doneButton, guiAlpha, mouseX, mouseY);
@@ -321,7 +349,9 @@ public class RenderScreen extends Screen {
         mobEspConfigButton.setX(le + MAIN_W + PAIR_GAP); mobEspConfigButton.setY(rowY(6));
         hidersButton.setX(le);                 hidersButton.setY(rowY(8));
         animationsButton.setX(le + HALF_W + PAIR_GAP); animationsButton.setY(rowY(8));
-        stalkButton.setX(le);                  stalkButton.setY(rowY(9));
+        timeToggle.setX(le);                   timeToggle.setY(rowY(9));
+        timeSlider.setX(le + HALF_W + PAIR_GAP); timeSlider.setY(rowY(9));
+        stalkButton.setX(le);                  stalkButton.setY(rowY(10));
         doneButton.setX(panelX + (BOX_WIDTH - 100) / 2); doneButton.setY(panelY + BOX_HEIGHT - 30);
     }
 
@@ -354,7 +384,7 @@ public class RenderScreen extends Screen {
         context.drawTextWithShadow(textRenderer, label, tx, ty, resolveTextColor(alpha, offset));
     }
 
-    private void styleSlider(DrawContext context, SliderWidget slider, float alpha, int mouseX, int mouseY) {
+    private void styleSlider(DrawContext context, SliderWidget slider, float alpha, int mouseX, int mouseY, float pct) {
         int bx = slider.getX();
         int by = slider.getY();
         int bw = slider.getWidth();
@@ -362,7 +392,6 @@ public class RenderScreen extends Screen {
         boolean hover = mouseX >= bx && mouseX <= bx + bw && mouseY >= by && mouseY <= by + bh;
         int fill = applyAlpha(hover ? 0xFF666666 : 0xFF555555, alpha);
         context.fill(bx, by, bx + bw, by + bh, fill);
-        float pct = RenderConfig.getXrayOpacity();
         int fillW = (int)((bw - 4) * pct);
         context.fill(bx + 2, by + 2, bx + 2 + fillW, by + bh - 2, applyAlpha(0xFF888888, alpha));
         InventoryHudRenderer.drawButtonBorder(context, bx - 1, by - 1, bx + bw + 1, by + bh + 1, alpha);

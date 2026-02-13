@@ -34,7 +34,9 @@
     "PlayerSizeMixin",
     "ItemInHandRendererMixin",
     "SwingDurationMixin",
-    "ClassicClickMixin"
+    "ClassicClickMixin",
+    "ClientWorldPropertiesAccessor",
+    "TimeUpdateMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -194,6 +194,12 @@ public class ClickGuiScreen extends Screen {
                 RenderConfig::isServerIdHiderEnabled,
                 () -> RenderConfig.setServerIdHiderEnabled(!RenderConfig.isServerIdHiderEnabled())));
 
+        render.add(new ModuleEntry("Time Changer", "Client-side time override",
+                RenderConfig::isCustomTimeEnabled,
+                () -> RenderConfig.setCustomTimeEnabled(!RenderConfig.isCustomTimeEnabled()),
+                List.of(new ModuleEntry.SliderSetting("Time", RenderConfig::getCustomTimeValue,
+                        RenderConfig::setCustomTimeValue, 0f, 100f, "%.0f"))));
+
         render.add(new ModuleEntry("Stalk Player", "Track a player with a tracer line",
                 StalkManager::isEnabled,
                 () -> { if (StalkManager.isEnabled()) StalkManager.disable(); },
