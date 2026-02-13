@@ -152,9 +152,7 @@ public class CapeScreen extends Screen {
     }
 
     private int resolveTextColor(float alpha, float chromaOffset) {
-        int base = (RenderConfig.isButtonTextChromaEnabled())
-                ? RenderConfig.chromaColor(chromaOffset)
-                : RenderConfig.getButtonTextColor();
+        int base = RenderConfig.getButtonTextLiveColor(chromaOffset);
         return applyAlpha(base, alpha);
     }
 }

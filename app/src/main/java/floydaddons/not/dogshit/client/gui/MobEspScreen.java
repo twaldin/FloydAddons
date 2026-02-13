@@ -255,7 +255,9 @@ public class MobEspScreen extends Screen {
                             RenderConfig.getDefaultEspColor(),
                             RenderConfig::setDefaultEspColor,
                             RenderConfig::isDefaultEspChromaEnabled,
-                            RenderConfig::setDefaultEspChromaEnabled));
+                            RenderConfig::setDefaultEspChromaEnabled,
+                            null, null, null,
+                            RenderConfig.getDefaultEspColor(), false));
                 }
                 return true;
             }
@@ -267,7 +269,9 @@ public class MobEspScreen extends Screen {
                             RenderConfig.getStalkTracerColor(),
                             RenderConfig::setStalkTracerColor,
                             RenderConfig::isStalkTracerChromaEnabled,
-                            RenderConfig::setStalkTracerChromaEnabled));
+                            RenderConfig::setStalkTracerChromaEnabled,
+                            null, null, null,
+                            RenderConfig.getStalkTracerColor(), false));
                 }
                 return true;
             }
@@ -337,7 +341,6 @@ public class MobEspScreen extends Screen {
     }
 
     private int chromaColor(float offset) {
-        if (!(RenderConfig.isButtonTextChromaEnabled())) return RenderConfig.getButtonTextColor();
-        return RenderConfig.chromaColor(offset);
+        return RenderConfig.getButtonTextLiveColor(offset);
     }
 }

@@ -35,9 +35,15 @@ public final class RenderConfig {
     private static boolean buttonTextChromaEnabled = false;
     private static boolean buttonBorderChromaEnabled = false;
     private static boolean guiBorderChromaEnabled = false;
+    private static boolean buttonTextFadeEnabled = false;
+    private static boolean buttonBorderFadeEnabled = false;
+    private static boolean guiBorderFadeEnabled = false;
     private static int guiBorderColor = 0xFFFFFFFF;
     private static int buttonBorderColor = 0xFFFFFFFF;
     private static int buttonTextColor = 0xFFFFFFFF;
+    private static int guiBorderFadeColor = 0xFFFFFFFF;
+    private static int buttonBorderFadeColor = 0xFFFFFFFF;
+    private static int buttonTextFadeColor = 0xFFFFFFFF;
     private static String selectedConeImage = "";
     private static String selectedCapeImage = "";
     private static boolean customScoreboardEnabled = false;
@@ -93,13 +99,40 @@ public final class RenderConfig {
     public static void setConeHatRotationSpeed(float v) { coneHatRotationSpeed = Math.max(0f, Math.min(360f, v)); }
 
     public static boolean isButtonTextChromaEnabled() { return buttonTextChromaEnabled; }
-    public static void setButtonTextChromaEnabled(boolean v) { buttonTextChromaEnabled = v; }
+    public static void setButtonTextChromaEnabled(boolean v) {
+        buttonTextChromaEnabled = v;
+        if (v) buttonTextFadeEnabled = false;
+    }
 
     public static boolean isButtonBorderChromaEnabled() { return buttonBorderChromaEnabled; }
-    public static void setButtonBorderChromaEnabled(boolean v) { buttonBorderChromaEnabled = v; }
+    public static void setButtonBorderChromaEnabled(boolean v) {
+        buttonBorderChromaEnabled = v;
+        if (v) buttonBorderFadeEnabled = false;
+    }
 
     public static boolean isGuiBorderChromaEnabled() { return guiBorderChromaEnabled; }
-    public static void setGuiBorderChromaEnabled(boolean v) { guiBorderChromaEnabled = v; }
+    public static void setGuiBorderChromaEnabled(boolean v) {
+        guiBorderChromaEnabled = v;
+        if (v) guiBorderFadeEnabled = false;
+    }
+
+    public static boolean isButtonTextFadeEnabled() { return buttonTextFadeEnabled; }
+    public static void setButtonTextFadeEnabled(boolean v) {
+        buttonTextFadeEnabled = v;
+        if (v) buttonTextChromaEnabled = false;
+    }
+
+    public static boolean isButtonBorderFadeEnabled() { return buttonBorderFadeEnabled; }
+    public static void setButtonBorderFadeEnabled(boolean v) {
+        buttonBorderFadeEnabled = v;
+        if (v) buttonBorderChromaEnabled = false;
+    }
+
+    public static boolean isGuiBorderFadeEnabled() { return guiBorderFadeEnabled; }
+    public static void setGuiBorderFadeEnabled(boolean v) {
+        guiBorderFadeEnabled = v;
+        if (v) guiBorderChromaEnabled = false;
+    }
 
     public static int getGuiBorderColor() { return ensureOpaque(guiBorderColor); }
     public static void setGuiBorderColor(int color) { guiBorderColor = ensureOpaque(color); }
@@ -109,6 +142,15 @@ public final class RenderConfig {
 
     public static int getButtonTextColor() { return ensureOpaque(buttonTextColor); }
     public static void setButtonTextColor(int color) { buttonTextColor = ensureOpaque(color); }
+
+    public static int getGuiBorderFadeColor() { return ensureOpaque(guiBorderFadeColor); }
+    public static void setGuiBorderFadeColor(int color) { guiBorderFadeColor = ensureOpaque(color); }
+
+    public static int getButtonBorderFadeColor() { return ensureOpaque(buttonBorderFadeColor); }
+    public static void setButtonBorderFadeColor(int color) { buttonBorderFadeColor = ensureOpaque(color); }
+
+    public static int getButtonTextFadeColor() { return ensureOpaque(buttonTextFadeColor); }
+    public static void setButtonTextFadeColor(int color) { buttonTextFadeColor = ensureOpaque(color); }
 
     public static String getSelectedConeImage() { return selectedConeImage; }
     public static void setSelectedConeImage(String v) { selectedConeImage = v != null ? v : ""; }
@@ -229,6 +271,47 @@ public final class RenderConfig {
         float hue = (float) ((time + offset) % 1.0);
         int rgb = java.awt.Color.HSBtoRGB(hue, 1.0f, 1.0f);
         return 0xFF000000 | (rgb & 0xFFFFFF);
+    }
+
+    /** Returns the live (animated) button text color with optional chroma/fade. */
+    public static int getButtonTextLiveColor(float chromaOffset) {
+        return animatedColor(getButtonTextColor(), getButtonTextFadeColor(),
+                buttonTextFadeEnabled, buttonTextChromaEnabled, chromaOffset);
+    }
+
+    /** Returns the live (animated) button border color with optional chroma/fade. */
+    public static int getButtonBorderLiveColor(float chromaOffset) {
+        return animatedColor(getButtonBorderColor(), getButtonBorderFadeColor(),
+                buttonBorderFadeEnabled, buttonBorderChromaEnabled, chromaOffset);
+    }
+
+    /** Returns the live (animated) GUI border color with optional chroma/fade. */
+    public static int getGuiBorderLiveColor(float chromaOffset) {
+        return animatedColor(getGuiBorderColor(), getGuiBorderFadeColor(),
+                guiBorderFadeEnabled, guiBorderChromaEnabled, chromaOffset);
+    }
+
+    private static int animatedColor(int base, int fade, boolean fadeEnabled, boolean chromaEnabled, float chromaOffset) {
+        if (chromaEnabled) return chromaColor(chromaOffset);
+        if (fadeEnabled) return lerpColor(base, fade, fadeProgress());
+        return base;
+    }
+
+    private static float fadeProgress() {
+        // Slow 8s ping-pong cycle to mirror chroma pacing but smoother
+        double time = (System.currentTimeMillis() % 8000) / 8000.0;
+        return (float) (0.5 - 0.5 * Math.cos(time * Math.PI * 2));
+    }
+
+    /** Linear interpolation between two ARGB colors (alpha preserved). */
+    public static int lerpColor(int a, int b, float t) {
+        t = Math.max(0f, Math.min(1f, t));
+        int ar = (a >> 16) & 0xFF, ag = (a >> 8) & 0xFF, ab = a & 0xFF;
+        int br = (b >> 16) & 0xFF, bg = (b >> 8) & 0xFF, bb = b & 0xFF;
+        int rr = Math.round(ar + (br - ar) * t);
+        int rg = Math.round(ag + (bg - ag) * t);
+        int rb = Math.round(ab + (bb - ab) * t);
+        return 0xFF000000 | (rr << 16) | (rg << 8) | rb;
     }
 
     private static int ensureOpaque(int color) {

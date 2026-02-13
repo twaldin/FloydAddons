@@ -228,9 +228,7 @@ public class HudScreen extends Screen {
     }
 
     private int resolveTextColor(float alpha, float chromaOffset) {
-        int base = (RenderConfig.isButtonTextChromaEnabled())
-                ? chromaColor(chromaOffset)
-                : RenderConfig.getButtonTextColor();
+        int base = RenderConfig.getButtonTextLiveColor(chromaOffset);
         return applyAlpha(base, alpha);
     }
 
@@ -240,8 +238,7 @@ public class HudScreen extends Screen {
     }
 
     private int chromaColor(float offset) {
-        if (!(RenderConfig.isButtonTextChromaEnabled())) return RenderConfig.getButtonTextColor();
-        return RenderConfig.chromaColor(offset);
+        return RenderConfig.getButtonTextLiveColor(offset);
     }
 
     private int clamp(int v, int min, int max) { return Math.max(min, Math.min(max, v)); }

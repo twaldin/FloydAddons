@@ -395,8 +395,7 @@ public class XrayEditorScreen extends Screen {
     }
 
     private int chromaColor(float offset) {
-        if (!RenderConfig.isButtonTextChromaEnabled()) return RenderConfig.getButtonTextColor();
-        return RenderConfig.chromaColor(offset);
+        return RenderConfig.getButtonTextLiveColor(offset);
     }
 
     /** Represents a clickable button entry in the scrollable content area. */

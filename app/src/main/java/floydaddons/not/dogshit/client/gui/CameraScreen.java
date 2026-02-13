@@ -338,7 +338,7 @@ public class CameraScreen extends Screen {
     }
 
     private int resolveTextColor(float alpha, float offset) {
-        int base = RenderConfig.isButtonTextChromaEnabled() ? RenderConfig.chromaColor(offset) : RenderConfig.getButtonTextColor();
+        int base = RenderConfig.getButtonTextLiveColor(offset);
         return applyAlpha(base, alpha);
     }
 

@@ -187,6 +187,48 @@ public class ModuleEntry {
     }
 
     /**
+     * A color picker with optional fade between two colors (mutually exclusive with chroma).
+     */
+    public static class FadingColorSetting extends ColorSetting {
+        private final java.util.function.Supplier<Integer> fadeColorGetter;
+        private final java.util.function.Consumer<Integer> fadeColorSetter;
+        private final java.util.function.BooleanSupplier fadeEnabledGetter;
+        private final java.util.function.Consumer<Boolean> fadeEnabledSetter;
+
+        public FadingColorSetting(String label,
+                                  java.util.function.Supplier<Integer> colorGetter,
+                                  java.util.function.Consumer<Integer> colorSetter,
+                                  java.util.function.BooleanSupplier chromaGetter,
+                                  java.util.function.Consumer<Boolean> chromaSetter,
+                                  java.util.function.Supplier<Integer> fadeColorGetter,
+                                  java.util.function.Consumer<Integer> fadeColorSetter,
+                                  java.util.function.BooleanSupplier fadeEnabledGetter,
+                                  java.util.function.Consumer<Boolean> fadeEnabledSetter) {
+            super(label, colorGetter, colorSetter, chromaGetter, chromaSetter);
+            this.fadeColorGetter = fadeColorGetter;
+            this.fadeColorSetter = fadeColorSetter;
+            this.fadeEnabledGetter = fadeEnabledGetter;
+            this.fadeEnabledSetter = fadeEnabledSetter;
+        }
+
+        public int getFadeColor() { return fadeColorGetter.get(); }
+        public void setFadeColor(int color) { fadeColorSetter.accept(color); }
+        public boolean isFadeEnabled() { return fadeEnabledGetter.getAsBoolean(); }
+        public void setFadeEnabled(boolean v) { fadeEnabledSetter.accept(v); }
+
+        @Override
+        public int getDisplayColor() {
+            if (isChroma()) return super.getDisplayColor();
+            if (isFadeEnabled()) {
+                double t = (System.currentTimeMillis() % 2000) / 2000.0;
+                float progress = (float) (0.5 - 0.5 * Math.cos(t * Math.PI * 2));
+                return RenderConfig.lerpColor(getColor(), getFadeColor(), progress);
+            }
+            return super.getDisplayColor();
+        }
+    }
+
+    /**
      * A text input sub-setting for editable string values.
      */
     public static class TextSetting extends SubSetting {

@@ -33,7 +33,7 @@ public class SkinScreen extends Screen {
     private ButtonWidget doneButton;
 
     private static final int BOX_WIDTH = 240;
-    private static final int BOX_HEIGHT = 366;
+    private static final int BOX_HEIGHT = 300;
     private static final long FADE_DURATION_MS = 90;
     private long openStartMs;
     private boolean closing = false;
@@ -68,9 +68,8 @@ public class SkinScreen extends Screen {
         panelY = savedY;
 
         int cx = panelX + (BOX_WIDTH - CONTROL_WIDTH) / 2;
-        // vertically center the stack of nine rows inside the box
-        int rowsHeight = ROW_HEIGHT * 9 + ROW_SPACING * 8;
-        int cy = panelY + (BOX_HEIGHT - rowsHeight) / 2;
+        // fixed top padding keeps layout compact (less dead space)
+        int cy = panelY + 36; // a bit lower so section titles sit in their gaps
 
         // Row 0: "Cosmetics" section header (drawn in render)
 
@@ -302,11 +301,10 @@ public class SkinScreen extends Screen {
         styleSlider(context, playerSizeZSlider, guiAlpha, mouseX, mouseY, SkinConfig.getPlayerScaleZ(), -1.0f, 5.0f);
         styleButton(context, doneButton, guiAlpha, mouseX, mouseY);
 
-        // Section headers
-        int rowsHeight = ROW_HEIGHT * 9 + ROW_SPACING * 8;
-        int cy = panelY + (BOX_HEIGHT - rowsHeight) / 2;
+        // Section headers (match layout offsets used in init)
+        int cy = panelY + 28; // nudge headers upward a bit
         drawSectionHeader(context, "Cosmetics", cy, guiAlpha);
-        drawSectionHeader(context, "Player Size", cy + ROW_SPACING * 4, guiAlpha);
+        drawSectionHeader(context, "Player Size", cy + ROW_SPACING * 4 + 8, guiAlpha);
 
         matrices.popMatrix();
     }
@@ -383,7 +381,6 @@ public class SkinScreen extends Screen {
     }
 
     private int resolveTextColor(float offset) {
-        if (!(RenderConfig.isButtonTextChromaEnabled())) return RenderConfig.getButtonTextColor();
-        return RenderConfig.chromaColor(offset);
+        return RenderConfig.getButtonTextLiveColor(offset);
     }
 }

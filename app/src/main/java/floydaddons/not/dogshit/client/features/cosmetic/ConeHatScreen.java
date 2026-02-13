@@ -690,8 +690,7 @@ public class ConeHatScreen extends Screen {
     }
 
     private int chromaColor(float offset) {
-        if (!(RenderConfig.isButtonTextChromaEnabled())) return RenderConfig.getButtonTextColor();
-        return RenderConfig.chromaColor(offset);
+        return RenderConfig.getButtonTextLiveColor(offset);
     }
 
     private static void openPath(java.nio.file.Path path) {

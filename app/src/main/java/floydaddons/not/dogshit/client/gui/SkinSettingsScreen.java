@@ -401,8 +401,7 @@ public class SkinSettingsScreen extends Screen {
     }
 
     private int resolveTextColor(float offset) {
-        if (!(RenderConfig.isButtonTextChromaEnabled())) return RenderConfig.getButtonTextColor();
-        return RenderConfig.chromaColor(offset);
+        return RenderConfig.getButtonTextLiveColor(offset);
     }
 }
 
