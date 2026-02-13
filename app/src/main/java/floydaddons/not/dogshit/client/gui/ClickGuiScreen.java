@@ -93,6 +93,7 @@ public class ClickGuiScreen extends Screen {
     private ModuleEntry.ColorSetting expandedColorSetting = null;
     private float inlineHue, inlineSat, inlineVal;
     private boolean draggingSV = false, draggingHue = false;
+    private boolean inlineEditingFadeColor = false;
 
     private ModuleEntry.SubSetting expandedFilterSetting = null;
     private String filterSearchQuery = "";
@@ -143,6 +144,7 @@ public class ClickGuiScreen extends Screen {
         popupModule = null;
         popupCategory = null;
         expandedColorSetting = null;
+        inlineEditingFadeColor = false;
         expandedFilterSetting = null;
         filterSearchQuery = "";
         filterSearchFocused = false;
@@ -196,6 +198,12 @@ public class ClickGuiScreen extends Screen {
                 RenderConfig::isServerIdHiderEnabled,
                 () -> RenderConfig.setServerIdHiderEnabled(!RenderConfig.isServerIdHiderEnabled())));
 
+        render.add(new ModuleEntry("Time Changer", "Client-side time override",
+                RenderConfig::isCustomTimeEnabled,
+                () -> RenderConfig.setCustomTimeEnabled(!RenderConfig.isCustomTimeEnabled()),
+                List.of(new ModuleEntry.SliderSetting("Time", RenderConfig::getCustomTimeValue,
+                        RenderConfig::setCustomTimeValue, 0f, 100f, "%.0f"))));
+
         render.add(new ModuleEntry("Stalk Player", "Track a player with a tracer line",
                 StalkManager::isEnabled,
                 () -> { if (StalkManager.isEnabled()) StalkManager.disable(); },
@@ -220,18 +228,25 @@ public class ClickGuiScreen extends Screen {
                         () -> MinecraftClient.getInstance().setScreen(new MoveHudScreen(self))))));
 
         render.add(new ModuleEntry("GUI Style", "Customize UI colors and chroma",
-                () -> RenderConfig.isButtonTextChromaEnabled() || RenderConfig.isButtonBorderChromaEnabled() || RenderConfig.isGuiBorderChromaEnabled(),
+                () -> RenderConfig.isButtonTextChromaEnabled() || RenderConfig.isButtonBorderChromaEnabled() || RenderConfig.isGuiBorderChromaEnabled()
+                        || RenderConfig.isButtonTextFadeEnabled() || RenderConfig.isButtonBorderFadeEnabled() || RenderConfig.isGuiBorderFadeEnabled(),
                 () -> {},
                 List.of(
-                        new ModuleEntry.ColorSetting("Text Color",
+                        new ModuleEntry.FadingColorSetting("Text Color",
                                 RenderConfig::getButtonTextColor, RenderConfig::setButtonTextColor,
-                                RenderConfig::isButtonTextChromaEnabled, RenderConfig::setButtonTextChromaEnabled),
-                        new ModuleEntry.ColorSetting("Button Border Color",
+                                RenderConfig::isButtonTextChromaEnabled, RenderConfig::setButtonTextChromaEnabled,
+                                RenderConfig::getButtonTextFadeColor, RenderConfig::setButtonTextFadeColor,
+                                RenderConfig::isButtonTextFadeEnabled, RenderConfig::setButtonTextFadeEnabled),
+                        new ModuleEntry.FadingColorSetting("Button Border Color",
                                 RenderConfig::getButtonBorderColor, RenderConfig::setButtonBorderColor,
-                                RenderConfig::isButtonBorderChromaEnabled, RenderConfig::setButtonBorderChromaEnabled),
-                        new ModuleEntry.ColorSetting("GUI Border Color",
+                                RenderConfig::isButtonBorderChromaEnabled, RenderConfig::setButtonBorderChromaEnabled,
+                                RenderConfig::getButtonBorderFadeColor, RenderConfig::setButtonBorderFadeColor,
+                                RenderConfig::isButtonBorderFadeEnabled, RenderConfig::setButtonBorderFadeEnabled),
+                        new ModuleEntry.FadingColorSetting("GUI Border Color",
                                 RenderConfig::getGuiBorderColor, RenderConfig::setGuiBorderColor,
-                                RenderConfig::isGuiBorderChromaEnabled, RenderConfig::setGuiBorderChromaEnabled)
+                                RenderConfig::isGuiBorderChromaEnabled, RenderConfig::setGuiBorderChromaEnabled,
+                                RenderConfig::getGuiBorderFadeColor, RenderConfig::setGuiBorderFadeColor,
+                                RenderConfig::isGuiBorderFadeEnabled, RenderConfig::setGuiBorderFadeEnabled)
                 )));
 
         render.add(new ModuleEntry("Attack Animation", "Custom held item animations",
@@ -422,15 +437,11 @@ public class ClickGuiScreen extends Screen {
     // --- Color helpers (respect 3 GUI color settings) ---
 
     private int getButtonBorderAccent() {
-        if (RenderConfig.isButtonBorderChromaEnabled())
-            return RenderConfig.chromaColor((System.currentTimeMillis() % 4000) / 4000f);
-        return RenderConfig.getButtonBorderColor();
+        return RenderConfig.getButtonBorderLiveColor((System.currentTimeMillis() % 4000) / 4000f);
     }
 
     private int getTextAccent() {
-        if (RenderConfig.isButtonTextChromaEnabled())
-            return RenderConfig.chromaColor((System.currentTimeMillis() % 4000) / 4000f);
-        return RenderConfig.getButtonTextColor();
+        return RenderConfig.getButtonTextLiveColor((System.currentTimeMillis() % 4000) / 4000f);
     }
 
     // --- Panel width ---
@@ -620,6 +631,7 @@ public class ClickGuiScreen extends Screen {
         popupModule = null;
         popupCategory = null;
         expandedColorSetting = null;
+        inlineEditingFadeColor = false;
         expandedFilterSetting = null;
         filterSearchQuery = "";
         filterSearchFocused = false;
@@ -782,6 +794,8 @@ public class ClickGuiScreen extends Screen {
                                           int px, int y, int pw, float alpha, int mouseX, int mouseY) {
         int svSize = 100, hueBarW = 10, hueBarH = 100;
         int svX = px + 10, svY = y + 4, hbX = svX + svSize + 8, hbY = svY;
+        ModuleEntry.FadingColorSetting fcs = cs instanceof ModuleEntry.FadingColorSetting ? (ModuleEntry.FadingColorSetting) cs : null;
+        boolean editingFade = fcs != null && inlineEditingFadeColor;
 
         if (cs.isChroma()) {
             int flash = RenderConfig.chromaColor((System.currentTimeMillis() % 4000) / 4000f);
@@ -812,7 +826,8 @@ public class ClickGuiScreen extends Screen {
         drawSolidBorder(context, hbX - 1, hbY - 1, hbX + hueBarW + 1, hbY + hueBarH + 1, applyAlpha(0xFF444444, alpha));
 
         int infoY = svY + svSize + 6;
-        int previewColor = cs.isChroma() ? RenderConfig.chromaColor((System.currentTimeMillis() % 4000) / 4000f)
+        int previewColor = cs.isChroma()
+                ? RenderConfig.chromaColor((System.currentTimeMillis() % 4000) / 4000f)
                 : (Color.HSBtoRGB(inlineHue, inlineSat, inlineVal) | 0xFF000000);
         context.fill(px + 10, infoY, px + 26, infoY + 16, applyAlpha(previewColor, alpha));
         String hex = "#" + String.format("%06X", previewColor & 0xFFFFFF);
@@ -822,6 +837,30 @@ public class ClickGuiScreen extends Screen {
         boolean hoverChroma = mouseX >= chromaX && mouseX <= px + pw - 4 && mouseY >= infoY && mouseY <= infoY + 16;
         context.drawTextWithShadow(textRenderer, chromaLabel, chromaX, infoY + 4,
                 hoverChroma ? applyAlpha(getTextAccent(), alpha) : applyAlpha(0xFFAAAAAA, alpha));
+
+        if (fcs != null) {
+            int fadeRowY = infoY + 18;
+            int sqSize = 12;
+            int baseSqX = px + 10;
+            int fadeSqX = baseSqX + sqSize + 6;
+            int sqY = fadeRowY;
+
+            // Base / Fade preview squares
+            context.fill(baseSqX, sqY, baseSqX + sqSize, sqY + sqSize, applyAlpha(fcs.getColor(), alpha));
+            context.fill(fadeSqX, sqY, fadeSqX + sqSize, sqY + sqSize, applyAlpha(fcs.getFadeColor(), alpha));
+            int selColor = applyAlpha(getButtonBorderAccent(), alpha);
+            int dimColor = applyAlpha(0xFF555555, alpha);
+            drawSolidBorder(context, baseSqX - 1, sqY - 1, baseSqX + sqSize + 1, sqY + sqSize + 1,
+                    editingFade ? dimColor : selColor);
+            drawSolidBorder(context, fadeSqX - 1, sqY - 1, fadeSqX + sqSize + 1, sqY + sqSize + 1,
+                    editingFade ? selColor : dimColor);
+
+            String fadeLabel = fcs.isFadeEnabled() ? "Fade: ON" : "Fade: OFF";
+            int fadeX = px + pw - textRenderer.getWidth(fadeLabel) - 10;
+            boolean hoverFade = mouseX >= fadeX && mouseX <= px + pw - 4 && mouseY >= fadeRowY && mouseY <= fadeRowY + 12;
+            context.drawTextWithShadow(textRenderer, fadeLabel, fadeX, fadeRowY + 1,
+                    hoverFade ? applyAlpha(getTextAccent(), alpha) : applyAlpha(0xFFAAAAAA, alpha));
+        }
     }
 
     // --- Inline Block Filter ---
@@ -1548,10 +1587,35 @@ public class ClickGuiScreen extends Screen {
                 int svX = popupX + 10, svY = settingY + POPUP_COLOR_COLLAPSED_HEIGHT + 4;
                 int svSize = 100, hueBarW = 10, hueBarH = 100;
                 int hbX = svX + svSize + 8, hbY = svY, infoY = svY + svSize + 6;
+                ModuleEntry.FadingColorSetting fcs = colorSetting instanceof ModuleEntry.FadingColorSetting ? (ModuleEntry.FadingColorSetting) colorSetting : null;
                 String chromaLabel = colorSetting.isChroma() ? "Chroma: ON" : "Chroma: OFF";
                 int chromaX = popupX + popupWidth - textRenderer.getWidth(chromaLabel) - 10;
                 if (my >= infoY && my <= infoY + 16 && mx >= chromaX) {
                     colorSetting.setChroma(!colorSetting.isChroma()); FloydAddonsConfig.save(); return;
+                }
+                if (fcs != null) {
+                    int fadeRowY = infoY + 18;
+                    int sqSize = 12;
+                    int baseSqX = popupX + 10;
+                    int fadeSqX = baseSqX + sqSize + 6;
+                    String fadeLabel = fcs.isFadeEnabled() ? "Fade: ON" : "Fade: OFF";
+                    int fadeX = popupX + popupWidth - textRenderer.getWidth(fadeLabel) - 10;
+                    // Fade toggle
+                    if (my >= fadeRowY && my <= fadeRowY + 12 && mx >= fadeX) {
+                        fcs.setFadeEnabled(!fcs.isFadeEnabled()); FloydAddonsConfig.save(); return;
+                    }
+                    // Base/Fade selector squares
+                    if (my >= fadeRowY && my <= fadeRowY + sqSize) {
+                        if (mx >= baseSqX && mx <= baseSqX + sqSize) {
+                            inlineEditingFadeColor = false;
+                            loadInlineFromColor(colorSetting.getColor());
+                            return;
+                        } else if (mx >= fadeSqX && mx <= fadeSqX + sqSize) {
+                            inlineEditingFadeColor = true;
+                            loadInlineFromColor(fcs.getFadeColor());
+                            return;
+                        }
+                    }
                 }
                 if (!colorSetting.isChroma() && mx >= svX && mx <= svX + svSize && my >= svY && my <= svY + svSize) {
                     draggingSV = true; updateInlineSV(mx - svX, my - svY, svSize, colorSetting); return;
@@ -1562,10 +1626,9 @@ public class ClickGuiScreen extends Screen {
                 if (my < settingY + POPUP_COLOR_COLLAPSED_HEIGHT) expandedColorSetting = null;
             } else {
                 expandedColorSetting = colorSetting;
+                inlineEditingFadeColor = false;
                 expandedFilterSetting = null; filterSearchFocused = false; filterSearchQuery = ""; filterScrollOffset = 0;
-                int c = colorSetting.getColor();
-                float[] hsv = Color.RGBtoHSB((c >> 16) & 0xFF, (c >> 8) & 0xFF, c & 0xFF, null);
-                inlineHue = hsv[0]; inlineSat = hsv[1]; inlineVal = hsv[2];
+                loadInlineFromColor(colorSetting.getColor());
             }
         } else if (setting instanceof ModuleEntry.ButtonSetting btn) {
             btn.click();
@@ -1636,14 +1699,23 @@ public class ClickGuiScreen extends Screen {
     private void updateInlineSV(double localX, double localY, int svSize, ModuleEntry.ColorSetting cs) {
         inlineSat = (float) Math.max(0, Math.min(1, localX / (svSize - 1)));
         inlineVal = (float) Math.max(0, Math.min(1, 1.0 - localY / (svSize - 1)));
-        cs.setColor(Color.HSBtoRGB(inlineHue, inlineSat, inlineVal) | 0xFF000000);
+        int newColor = Color.HSBtoRGB(inlineHue, inlineSat, inlineVal) | 0xFF000000;
+        if (cs instanceof ModuleEntry.FadingColorSetting fcs && inlineEditingFadeColor) fcs.setFadeColor(newColor);
+        else cs.setColor(newColor);
         FloydAddonsConfig.save();
     }
 
     private void updateInlineHue(double localY, int hueBarH, ModuleEntry.ColorSetting cs) {
         inlineHue = (float) Math.max(0, Math.min(1, localY / (hueBarH - 1)));
-        cs.setColor(Color.HSBtoRGB(inlineHue, inlineSat, inlineVal) | 0xFF000000);
+        int newColor = Color.HSBtoRGB(inlineHue, inlineSat, inlineVal) | 0xFF000000;
+        if (cs instanceof ModuleEntry.FadingColorSetting fcs && inlineEditingFadeColor) fcs.setFadeColor(newColor);
+        else cs.setColor(newColor);
         FloydAddonsConfig.save();
+    }
+
+    private void loadInlineFromColor(int color) {
+        float[] hsv = Color.RGBtoHSB((color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, null);
+        inlineHue = hsv[0]; inlineSat = hsv[1]; inlineVal = hsv[2];
     }
 
     private int findExpandedColorSettingY() {

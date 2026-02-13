@@ -142,22 +142,32 @@ public final class InventoryHudRenderer implements HudRenderCallback {
     }
 
     public static void drawChromaBorder(DrawContext context, int left, int top, int right, int bottom, float alpha) {
-        if (RenderConfig.isGuiBorderChromaEnabled()) {
-            drawRainbowBorder(context, left, top, right, bottom, alpha);
-        } else {
-            drawSolidBorder(context, left, top, right, bottom, RenderConfig.getGuiBorderColor(), alpha);
-        }
+        drawAnimatedBorder(context, left, top, right, bottom, alpha,
+                RenderConfig.getGuiBorderColor(), RenderConfig.getGuiBorderFadeColor(),
+                RenderConfig.isGuiBorderChromaEnabled(), RenderConfig.isGuiBorderFadeEnabled());
     }
 
     public static void drawButtonBorder(DrawContext context, int left, int top, int right, int bottom, float alpha) {
-        if (RenderConfig.isButtonBorderChromaEnabled()) {
-            drawRainbowBorder(context, left, top, right, bottom, alpha);
-        } else {
-            drawSolidBorder(context, left, top, right, bottom, RenderConfig.getButtonBorderColor(), alpha);
-        }
+        drawAnimatedBorder(context, left, top, right, bottom, alpha,
+                RenderConfig.getButtonBorderColor(), RenderConfig.getButtonBorderFadeColor(),
+                RenderConfig.isButtonBorderChromaEnabled(), RenderConfig.isButtonBorderFadeEnabled());
     }
 
     private static final int CHROMA_SEGMENTS_PER_EDGE = 12;
+
+    private static void drawAnimatedBorder(DrawContext context, int left, int top, int right, int bottom, float alpha,
+                                           int baseColor, int fadeColor,
+                                           boolean chromaEnabled, boolean fadeEnabled) {
+        if (chromaEnabled) {
+            drawRainbowBorder(context, left, top, right, bottom, alpha);
+            return;
+        }
+        if (fadeEnabled) {
+            drawCircularFadeBorder(context, left, top, right, bottom, alpha, baseColor, fadeColor);
+            return;
+        }
+        drawSolidBorder(context, left, top, right, bottom, baseColor, alpha);
+    }
 
     private static void drawRainbowBorder(DrawContext context, int left, int top, int right, int bottom, float alpha) {
         int width = right - left;
@@ -197,6 +207,46 @@ public final class InventoryHudRenderer implements HudRenderCallback {
             int c = applyAlpha(chromaColor(pos / (float) perimeter), alpha);
             context.fill(left, top + y - h + 1, left + 1, top + y + 1, c);
         }
+    }
+
+    /** Border fade that travels around the perimeter in a loop, similar to chroma but between two colors. */
+    private static void drawCircularFadeBorder(DrawContext context, int left, int top, int right, int bottom, float alpha,
+                                               int baseColor, int fadeColor) {
+        int width = right - left;
+        int height = bottom - top;
+        int perimeter = width * 2 + height * 2;
+        if (perimeter <= 0) return;
+
+        double time = (System.currentTimeMillis() % 8000) / 8000.0;
+        // One pixel per perimeter unit for maximal smoothness
+        int pos = 0;
+        // Top
+        for (int x = 0; x < width; x++, pos++) {
+            int c = fadeBorderColor(baseColor, fadeColor, pos, perimeter, time, alpha);
+            context.fill(left + x, top, left + x + 1, top + 1, c);
+        }
+        // Right
+        for (int y = 0; y < height; y++, pos++) {
+            int c = fadeBorderColor(baseColor, fadeColor, pos, perimeter, time, alpha);
+            context.fill(right - 1, top + y, right, top + y + 1, c);
+        }
+        // Bottom
+        for (int x = width - 1; x >= 0; x--, pos++) {
+            int c = fadeBorderColor(baseColor, fadeColor, pos, perimeter, time, alpha);
+            context.fill(left + x, bottom - 1, left + x + 1, bottom, c);
+        }
+        // Left
+        for (int y = height - 1; y >= 0; y--, pos++) {
+            int c = fadeBorderColor(baseColor, fadeColor, pos, perimeter, time, alpha);
+            context.fill(left, top + y, left + 1, top + y + 1, c);
+        }
+    }
+
+    private static int fadeBorderColor(int base, int fade, int pos, int perimeter, double time, float alpha) {
+        float t = (float) (((pos / (double) perimeter) + time) % 1.0);
+        float wave = (float) (0.5 - 0.5 * Math.cos(t * Math.PI * 2));
+        int c = RenderConfig.lerpColor(base, fade, wave);
+        return applyAlpha(c, alpha);
     }
 
     private static void drawSolidBorder(DrawContext context, int left, int top, int right, int bottom, int color, float alpha) {

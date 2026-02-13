@@ -115,6 +115,11 @@ public class FloydAddonsClient implements ClientModInitializer {
             while (freelookToggleKey.wasPressed()) {
                 CameraConfig.toggleFreelook();
             }
+
+            // Client-side time override
+            if (RenderConfig.isCustomTimeEnabled() && client.world != null) {
+                RenderConfig.applyCustomTime(client.world.getLevelProperties());
+            }
         });
 
         LivingEntityFeatureRendererRegistrationCallback.EVENT.register(

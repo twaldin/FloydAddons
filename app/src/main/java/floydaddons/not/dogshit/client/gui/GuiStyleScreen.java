@@ -111,9 +111,10 @@ public class GuiStyleScreen extends Screen {
         float guiAlpha = closing ? (1.0f - closeProgress) : openProgress;
         if (guiAlpha <= 0f) return;
 
-        liveTextColor = RenderConfig.getButtonTextColor();
-        liveButtonBorderColor = RenderConfig.getButtonBorderColor();
-        liveGuiBorderColor = RenderConfig.getGuiBorderColor();
+        float animT = (System.currentTimeMillis() % 4000) / 4000f;
+        liveTextColor = RenderConfig.getButtonTextLiveColor(animT);
+        liveButtonBorderColor = RenderConfig.getButtonBorderLiveColor(animT);
+        liveGuiBorderColor = RenderConfig.getGuiBorderLiveColor(animT);
 
         float scale = 0.85f + guiAlpha * 0.15f;
         var matrices = context.getMatrices();
@@ -144,8 +145,7 @@ public class GuiStyleScreen extends Screen {
         // Title
         String title = "GUI Style";
         int titleWidth = textRenderer.getWidth(title);
-        int titleColor = RenderConfig.isButtonTextChromaEnabled()
-                ? chromaColor(0f) : liveTextColor;
+        int titleColor = RenderConfig.getButtonTextLiveColor(0f);
         context.drawTextWithShadow(textRenderer, title, panelX + (BOX_WIDTH - titleWidth) / 2, panelY + 6,
                 applyAlpha(titleColor, guiAlpha));
 
@@ -154,7 +154,7 @@ public class GuiStyleScreen extends Screen {
 
     private void drawRow(DrawContext context, String label, int y, int previewColor, boolean chroma, float alpha) {
         int labelX = leftEdge();
-        int labelColor = RenderConfig.isButtonTextChromaEnabled() ? chromaColor(0f) : liveTextColor;
+        int labelColor = RenderConfig.getButtonTextLiveColor(0f);
         context.drawTextWithShadow(textRenderer, label, labelX, y + (ROW_HEIGHT - textRenderer.fontHeight) / 2,
                 applyAlpha(labelColor, alpha));
 
@@ -188,9 +188,7 @@ public class GuiStyleScreen extends Screen {
         int tw = textRenderer.getWidth(label);
         int tx = bx + (bw - tw) / 2;
         int ty = by + (bh - textRenderer.fontHeight) / 2;
-        int color = RenderConfig.isButtonTextChromaEnabled()
-                ? applyAlpha(chromaColor((System.currentTimeMillis() % 4000) / 4000f), alpha)
-                : applyAlpha(liveTextColor, alpha);
+        int color = applyAlpha(RenderConfig.getButtonTextLiveColor((System.currentTimeMillis() % 4000) / 4000f), alpha);
         context.drawTextWithShadow(textRenderer, label, tx, ty, color);
     }
 
@@ -280,8 +278,33 @@ public class GuiStyleScreen extends Screen {
                 case GUI -> RenderConfig.setGuiBorderChromaEnabled(flag);
             }
         };
+        Consumer<Integer> fadeSetter = color -> {
+            switch (target) {
+                case TEXT -> RenderConfig.setButtonTextFadeColor(color);
+                case BUTTON -> RenderConfig.setButtonBorderFadeColor(color);
+                case GUI -> RenderConfig.setGuiBorderFadeColor(color);
+            }
+        };
+        java.util.function.BooleanSupplier fadeGetter = switch (target) {
+            case TEXT -> RenderConfig::isButtonTextFadeEnabled;
+            case BUTTON -> RenderConfig::isButtonBorderFadeEnabled;
+            case GUI -> RenderConfig::isGuiBorderFadeEnabled;
+        };
+        Consumer<Boolean> fadeFlagSetter = flag -> {
+            switch (target) {
+                case TEXT -> RenderConfig.setButtonTextFadeEnabled(flag);
+                case BUTTON -> RenderConfig.setButtonBorderFadeEnabled(flag);
+                case GUI -> RenderConfig.setGuiBorderFadeEnabled(flag);
+            }
+        };
+        int initialFade = switch (target) {
+            case TEXT -> RenderConfig.getButtonTextFadeColor();
+            case BUTTON -> RenderConfig.getButtonBorderFadeColor();
+            case GUI -> RenderConfig.getGuiBorderFadeColor();
+        };
         if (client != null) {
-            client.setScreen(new ColorPickerScreen(this, target.display, current, apply, chromaGetter, chromaSetter));
+            client.setScreen(new ColorPickerScreen(this, target.display, current, apply, chromaGetter, chromaSetter,
+                    fadeSetter, fadeGetter, fadeFlagSetter, initialFade, true));
         }
     }
 
