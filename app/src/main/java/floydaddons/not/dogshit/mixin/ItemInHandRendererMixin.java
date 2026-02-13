@@ -1,6 +1,6 @@
 package floydaddons.not.dogshit.mixin;
 
-import floydaddons.not.dogshit.client.AnimationConfig;
+import floydaddons.not.dogshit.client.config.AnimationConfig;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.command.OrderedRenderCommandQueue;
 import net.minecraft.client.render.item.HeldItemRenderer;

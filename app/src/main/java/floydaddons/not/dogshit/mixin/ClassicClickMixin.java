@@ -1,6 +1,6 @@
 package floydaddons.not.dogshit.mixin;
 
-import floydaddons.not.dogshit.client.AnimationConfig;
+import floydaddons.not.dogshit.client.config.AnimationConfig;
 import net.minecraft.client.option.StickyKeyBinding;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;

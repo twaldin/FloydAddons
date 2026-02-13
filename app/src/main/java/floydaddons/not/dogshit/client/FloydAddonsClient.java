@@ -1,4 +1,14 @@
 package floydaddons.not.dogshit.client;
+import floydaddons.not.dogshit.client.*;
+import floydaddons.not.dogshit.client.config.*;
+import floydaddons.not.dogshit.client.gui.*;
+import floydaddons.not.dogshit.client.features.hud.*;
+import floydaddons.not.dogshit.client.features.visual.*;
+import floydaddons.not.dogshit.client.features.cosmetic.*;
+import floydaddons.not.dogshit.client.features.misc.*;
+import floydaddons.not.dogshit.client.esp.*;
+import floydaddons.not.dogshit.client.skin.*;
+import floydaddons.not.dogshit.client.util.*;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -51,21 +61,21 @@ public class FloydAddonsClient implements ClientModInitializer {
         xrayToggleKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.floydaddons.toggle_xray",
                 InputUtil.Type.KEYSYM,
-                GLFW.GLFW_KEY_X,
+                GLFW.GLFW_KEY_UNKNOWN,
                 KEY_CATEGORY
         ));
 
         mobEspToggleKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.floydaddons.toggle_mob_esp",
                 InputUtil.Type.KEYSYM,
-                GLFW.GLFW_KEY_M,
+                GLFW.GLFW_KEY_UNKNOWN,
                 KEY_CATEGORY
         ));
 
         freecamToggleKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.floydaddons.toggle_freecam",
                 InputUtil.Type.KEYSYM,
-                GLFW.GLFW_KEY_F,
+                GLFW.GLFW_KEY_UNKNOWN,
                 KEY_CATEGORY
         ));
 

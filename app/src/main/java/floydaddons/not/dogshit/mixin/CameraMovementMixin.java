@@ -1,6 +1,6 @@
 package floydaddons.not.dogshit.mixin;
 
-import floydaddons.not.dogshit.client.CameraConfig;
+import floydaddons.not.dogshit.client.config.CameraConfig;
 import net.minecraft.client.input.Input;
 import net.minecraft.client.network.ClientPlayerEntity;
 import org.spongepowered.asm.mixin.Mixin;

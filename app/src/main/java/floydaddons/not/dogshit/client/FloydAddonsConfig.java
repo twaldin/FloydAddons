@@ -1,4 +1,14 @@
 package floydaddons.not.dogshit.client;
+import floydaddons.not.dogshit.client.*;
+import floydaddons.not.dogshit.client.config.*;
+import floydaddons.not.dogshit.client.gui.*;
+import floydaddons.not.dogshit.client.features.hud.*;
+import floydaddons.not.dogshit.client.features.visual.*;
+import floydaddons.not.dogshit.client.features.cosmetic.*;
+import floydaddons.not.dogshit.client.features.misc.*;
+import floydaddons.not.dogshit.client.esp.*;
+import floydaddons.not.dogshit.client.skin.*;
+import floydaddons.not.dogshit.client.util.*;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -90,6 +100,7 @@ public final class FloydAddonsConfig {
         data.playerScaleX = SkinConfig.getPlayerScaleX();
         data.playerScaleY = SkinConfig.getPlayerScaleY();
         data.playerScaleZ = SkinConfig.getPlayerScaleZ();
+        data.playerSizeTarget = SkinConfig.getPlayerSizeTarget();
         // Render
         data.inventoryHudEnabled = RenderConfig.isInventoryHudEnabled();
         data.inventoryHudX = RenderConfig.getInventoryHudX();
@@ -285,6 +296,7 @@ public final class FloydAddonsConfig {
         } else if (data.playerScale != 1.0f && data.playerScale > 0) {
             SkinConfig.setPlayerScale(data.playerScale);
         }
+        if (data.playerSizeTarget != null) SkinConfig.setPlayerSizeTarget(data.playerSizeTarget);
     }
 
     private static void loadHiders(Data data) {
@@ -374,6 +386,7 @@ public final class FloydAddonsConfig {
         float playerScaleX = 1.0f;
         float playerScaleY = 1.0f;
         float playerScaleZ = 1.0f;
+        String playerSizeTarget = "Self";
         // Render
         boolean inventoryHudEnabled;
         int inventoryHudX;
@@ -414,8 +427,9 @@ public final class FloydAddonsConfig {
         boolean f5DisableFront;
         boolean f5DisableBack;
         float f5CameraDistance = 4.0f;
-        boolean f5ScrollEnabled = true;
-        boolean f5ResetOnToggle = true;
+        // F5 Customizer toggles default to off
+        boolean f5ScrollEnabled;
+        boolean f5ResetOnToggle;
         // Hiders
         boolean hiderNoHurtCamera;
         boolean hiderRemoveFireOverlay;

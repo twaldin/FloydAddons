@@ -1,6 +1,6 @@
 package floydaddons.not.dogshit.mixin;
 
-import floydaddons.not.dogshit.client.CameraConfig;
+import floydaddons.not.dogshit.client.config.CameraConfig;
 import floydaddons.not.dogshit.client.FloydAddonsConfig;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.Mouse;

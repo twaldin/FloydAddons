@@ -1,6 +1,6 @@
 package floydaddons.not.dogshit.mixin;
 
-import floydaddons.not.dogshit.client.HidersConfig;
+import floydaddons.not.dogshit.client.config.HidersConfig;
 import net.minecraft.client.gui.hud.InGameHud;
 import net.minecraft.client.option.Perspective;
 import org.spongepowered.asm.mixin.Mixin;

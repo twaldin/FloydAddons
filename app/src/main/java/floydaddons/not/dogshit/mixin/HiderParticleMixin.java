@@ -1,6 +1,6 @@
 package floydaddons.not.dogshit.mixin;
 
-import floydaddons.not.dogshit.client.HidersConfig;
+import floydaddons.not.dogshit.client.config.HidersConfig;
 import net.minecraft.client.particle.ParticleManager;
 import net.minecraft.particle.ParticleEffect;
 import net.minecraft.particle.ParticleTypes;
