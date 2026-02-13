@@ -70,13 +70,15 @@ public class MoveHudScreen extends Screen {
 
         InventoryHudRenderer.renderInventory(context, client.player != null ? client.player.getInventory() : null, invX, invY, 1f, true);
 
-        // --- Scoreboard HUD preview ---
+        // --- Scoreboard HUD preview (stored as bottom-right) ---
         int sbW = ScoreboardHudRenderer.getLastWidth();
         int sbH = ScoreboardHudRenderer.getLastHeight();
-        int sbX = clamp(RenderConfig.getCustomScoreboardX(), 0, width - sbW);
-        int sbY = clamp(RenderConfig.getCustomScoreboardY(), 0, height - sbH);
-        RenderConfig.setCustomScoreboardX(sbX);
-        RenderConfig.setCustomScoreboardY(sbY);
+        int sbBrX = clamp(RenderConfig.getCustomScoreboardX(), sbW, width);
+        int sbBrY = clamp(RenderConfig.getCustomScoreboardY(), sbH, height);
+        RenderConfig.setCustomScoreboardX(sbBrX);
+        RenderConfig.setCustomScoreboardY(sbBrY);
+        int sbX = sbBrX - sbW;
+        int sbY = sbBrY - sbH;
 
         context.fill(sbX, sbY, sbX + sbW, sbY + sbH, 0x88000000);
         InventoryHudRenderer.drawChromaBorder(context, sbX - 1, sbY - 1, sbX + sbW + 1, sbY + sbH + 1, 1f);
@@ -110,11 +112,11 @@ public class MoveHudScreen extends Screen {
                 return true;
             }
 
-            // Check scoreboard HUD bounds
-            int sbX = RenderConfig.getCustomScoreboardX();
-            int sbY = RenderConfig.getCustomScoreboardY();
+            // Check scoreboard HUD bounds (stored as bottom-right)
             int sbW = ScoreboardHudRenderer.getLastWidth();
             int sbH = ScoreboardHudRenderer.getLastHeight();
+            int sbX = RenderConfig.getCustomScoreboardX() - sbW;
+            int sbY = RenderConfig.getCustomScoreboardY() - sbH;
             if (mouseX >= sbX && mouseX <= sbX + sbW && mouseY >= sbY && mouseY <= sbY + sbH) {
                 dragTarget = DragTarget.SCOREBOARD;
                 dragOffsetX = (int) (mouseX - sbX);
@@ -140,8 +142,8 @@ public class MoveHudScreen extends Screen {
                 int hudH = ScoreboardHudRenderer.getLastHeight();
                 int newX = clamp((int) (click.x() - dragOffsetX), 0, width - hudW);
                 int newY = clamp((int) (click.y() - dragOffsetY), 0, height - hudH);
-                RenderConfig.setCustomScoreboardX(newX);
-                RenderConfig.setCustomScoreboardY(newY);
+                RenderConfig.setCustomScoreboardX(newX + hudW);
+                RenderConfig.setCustomScoreboardY(newY + hudH);
             }
             return true;
         }

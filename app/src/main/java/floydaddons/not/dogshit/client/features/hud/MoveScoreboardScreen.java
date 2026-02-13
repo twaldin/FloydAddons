@@ -59,10 +59,12 @@ public class MoveScoreboardScreen extends Screen {
 
         int hudW = ScoreboardHudRenderer.getLastWidth();
         int hudH = ScoreboardHudRenderer.getLastHeight();
-        int hudX = clamp(RenderConfig.getCustomScoreboardX(), 0, width - hudW);
-        int hudY = clamp(RenderConfig.getCustomScoreboardY(), 0, height - hudH);
-        RenderConfig.setCustomScoreboardX(hudX);
-        RenderConfig.setCustomScoreboardY(hudY);
+        int brX = clamp(RenderConfig.getCustomScoreboardX(), hudW, width);
+        int brY = clamp(RenderConfig.getCustomScoreboardY(), hudH, height);
+        RenderConfig.setCustomScoreboardX(brX);
+        RenderConfig.setCustomScoreboardY(brY);
+        int hudX = brX - hudW;
+        int hudY = brY - hudH;
 
         // Draw a preview box showing the scoreboard position
         context.fill(hudX, hudY, hudX + hudW, hudY + hudH, 0x88000000);
@@ -84,10 +86,10 @@ public class MoveScoreboardScreen extends Screen {
         double mouseX = click.x();
         double mouseY = click.y();
         if (click.button() == 0) {
-            int hudX = RenderConfig.getCustomScoreboardX();
-            int hudY = RenderConfig.getCustomScoreboardY();
             int hudW = ScoreboardHudRenderer.getLastWidth();
             int hudH = ScoreboardHudRenderer.getLastHeight();
+            int hudX = RenderConfig.getCustomScoreboardX() - hudW;
+            int hudY = RenderConfig.getCustomScoreboardY() - hudH;
             if (mouseX >= hudX && mouseX <= hudX + hudW && mouseY >= hudY && mouseY <= hudY + hudH) {
                 dragging = true;
                 dragOffsetX = (int) (mouseX - hudX);
@@ -105,8 +107,8 @@ public class MoveScoreboardScreen extends Screen {
             int hudH = ScoreboardHudRenderer.getLastHeight();
             int newX = clamp((int) (click.x() - dragOffsetX), 0, width - hudW);
             int newY = clamp((int) (click.y() - dragOffsetY), 0, height - hudH);
-            RenderConfig.setCustomScoreboardX(newX);
-            RenderConfig.setCustomScoreboardY(newY);
+            RenderConfig.setCustomScoreboardX(newX + hudW);
+            RenderConfig.setCustomScoreboardY(newY + hudH);
             return true;
         }
         return super.mouseDragged(click, deltaX, deltaY);
