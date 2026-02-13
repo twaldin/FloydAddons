@@ -23,6 +23,8 @@
     "HiderFallingBlockMixin",
     "HiderParticleMixin",
     "HiderPlayerListMixin",
+    "HiderArmorMixin",
+    "HiderHeadMixin",
     "HiderArrowMixin",
     "HiderFireEntityMixin",
     "CameraAccessor",
