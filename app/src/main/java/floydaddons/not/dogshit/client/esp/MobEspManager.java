@@ -73,7 +73,7 @@ public final class MobEspManager {
 
     // Mob names that spawn as player entities (not regular mobs)
     private static final Set<String> PLAYER_MOB_NAMES = Set.of(
-            "shadow assassin", "lost adventurer", "king midas"
+            "shadow assassin", "lost adventurer", "diamond guy", "king midas"
     );
 
     private MobEspManager() {}
